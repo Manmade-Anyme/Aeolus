@@ -5,6 +5,10 @@
 -- FKs use ON DELETE SET NULL, not CASCADE: this is an append-only audit log,
 -- nothing should delete rows, but an accidental snapshot delete must not
 -- silently destroy label data too.
+--
+-- NOTE: outcome_labels_has_source below is dropped by 0006 — it conflicts
+-- with ON DELETE SET NULL (see 0006 for why). Kept here unmodified since this
+-- file already ran against the live project; don't edit applied migrations.
 
 create table if not exists outcome_labels (
     id                      uuid primary key default gen_random_uuid(),

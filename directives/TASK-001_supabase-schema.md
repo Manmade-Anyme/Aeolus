@@ -20,4 +20,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md` — esp. system_status ≠ market_state.
 
-**Status:** BUILT — awaiting live DB verification (see `reports/qa/TASK-001_qa-report.md`)
+**Status:** COMPLETE — merged to `main` (PR #1). Live DB verification against real Postgres still outstanding (see `reports/qa/TASK-001_qa-report.md`)
