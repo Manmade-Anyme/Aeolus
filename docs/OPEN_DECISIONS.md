@@ -22,8 +22,8 @@ v1 spec = strict binary expiry/non-expiry config. Alternative: continuous DTE-ba
 
 Is backtesting against pre-launch dates a hard requirement? If yes → historical-data-sourcing workstream (NSE bhavcopy or paid vendor). If no → labeled dataset builds live from go-live forward.
 
-- **Status:** OPEN
-- **Resolution:** —
+- **Status:** RESOLVED (2026-07-03)
+- **Resolution:** No. Live-forward only. Labeled dataset builds from go-live forward; no historical backfill workstream. TASK-001 scope unchanged.
 
 ## 4. Futures basis signal — affects TASK-002 (cheap add) + a signal module
 
