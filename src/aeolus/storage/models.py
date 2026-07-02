@@ -78,7 +78,11 @@ class DailyOutlook(BaseModel):
 
 
 class OutcomeLabel(BaseModel):
-    """Backfilled enrichment, never written live. Written by TASK-012 only."""
+    """Backfilled enrichment, never written live. Written by TASK-012 only.
+
+    The "at least one of snapshot_id/transition_id" rule is enforced only here
+    (_has_source below), not at the DB level — a DB CHECK constraint doing this
+    conflicted with ON DELETE SET NULL and was dropped (migration 0006)."""
 
     TABLE: ClassVar[str] = "outcome_labels"
 
