@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Local search index
+SEARCH/
+
+# Local claude settings
+.claude/settings.local.json
