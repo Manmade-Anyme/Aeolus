@@ -6,6 +6,8 @@ requires-python = ">=3.11"
 dependencies = [
     # Populated per-module as directives are implemented (TASK-001..013).
     # Expected: dhanhq, supabase, httpx/websockets, pydantic, apscheduler
+    "pydantic>=2.0",
+    "supabase>=2.0",
 ]
 
 [project.optional-dependencies]
@@ -14,6 +16,7 @@ dev = [
     "pytest-asyncio",
     "ruff",
     "mypy",
+    "psycopg[binary]>=3.1",
 ]
 
 [build-system]

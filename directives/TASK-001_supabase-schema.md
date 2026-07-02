@@ -20,4 +20,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md` — esp. system_status ≠ market_state.
 
-**Status:** DRAFT
+**Status:** BUILT — awaiting live DB verification (see `reports/qa/TASK-001_qa-report.md`)
