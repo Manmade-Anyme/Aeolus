@@ -69,6 +69,8 @@ Accumulates from go-live forward only. Pre-launch backtesting needs a separate h
 | `0004_daily_outlook.sql` | `daily_outlook` — `trend_exhaustion_flag boolean` as its own column (never folded into `contributing_inputs`); `realized_archetype` nullable, backfilled by TASK-012. Unique + index: `session_date` |
 | `0005_outcome_labels.sql` | `outcome_labels` — FKs to `signal_snapshots`/`state_transitions` use `ON DELETE SET NULL` (append-only log, never cascade-delete label data); `horizon_minutes` constrained to `{15, 30, 60}` |
 | `0006_fix_outcome_labels_source_check.sql` | Drops the `outcome_labels_has_source` CHECK from 0005 — it conflicted with `ON DELETE SET NULL` (a delete-triggered SET NULL could leave both source columns null, tripping the CHECK and blocking the delete entirely). "At least one source" is now enforced only by `OutcomeLabel` (pydantic). Found via live testing, see ADR Amendment. |
+| `0007_outcome_labels_idempotency.sql` | Original attempt at `OutcomeBackfillJob`'s (TASK-012) idempotency guarantee — partial unique indexes on `(snapshot_id, horizon_minutes)`/`(transition_id, horizon_minutes)`. Left applied/unedited; superseded by 0008. |
+| `0008_fix_outcome_labels_idempotency_constraint.sql` | Fixes 0007 — partial indexes don't satisfy PostgREST's `ON CONFLICT` inference (confirmed live, `42P10`). Plain (non-partial) `UNIQUE` constraints instead — standard SQL's `NULL <> NULL` already gives the same guarantee without a partial predicate, and PostgREST's upsert can target it directly. |
 
 All timestamps are `timestamptz`, stored UTC — IST conversion is a presentation concern (TASK-011 Discord formatter), not storage. RLS is disabled on all 4 tables (anon-key runtime access, same convention as Ares).
 
