@@ -3,9 +3,9 @@
 **Goal:** Compute Spec §6.2: GEX / zero-gamma flip level — sign (dealer positioning regime) AND magnitude (conviction) — plus spot's distance from the flip level.
 
 **Acceptance Criteria:**
-- [ ] Standard contract: `(raw_value, reference_band, sub_score, reason_string)` per sub-signal
-- [ ] Magnitude normalized (e.g. vs recent GEX magnitude history) so strong/weak negative gamma is a comparable score, not a raw dollar figure
-- [ ] Sign and magnitude both contribute — weak negative gamma scores differently from strong negative gamma
+- [x] Standard contract: `(raw_value, reference_band, sub_score, reason_string)` per sub-signal
+- [x] Magnitude normalized (e.g. vs recent GEX magnitude history) so strong/weak negative gamma is a comparable score, not a raw dollar figure
+- [x] Sign and magnitude both contribute — weak negative gamma scores differently from strong negative gamma
 
 **Inputs:** Option chain (OI, greeks per strike) from TASK-002; Spec §6.2, Build Prompt 4.
 
@@ -17,4 +17,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md`.
 
-**Status:** DRAFT
+**Status:** IMPLEMENTED — ADR approved 2026-07-03, code + tests complete (see `reports/debug/TASK-004_debug-report.md`, `reports/qa/TASK-004_qa-report.md`), pending PR/merge to `main` on `feature/TASK-004-gamma-signals`.
