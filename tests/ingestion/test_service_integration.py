@@ -47,5 +47,8 @@ def test_ingestion_service_end_to_end():
         # packet, may still be None in a short observation window.
         for field in ("volume", "total_buy_quantity", "total_sell_quantity", "day_high", "day_low"):
             assert hasattr(snapshot, field)
+        # TASK-007 amendment: expiry_date is resolved once in start(), before any
+        # WS ticks arrive, so it should always be populated by the time latest() runs.
+        assert snapshot.expiry_date is not None
     finally:
         service.stop()

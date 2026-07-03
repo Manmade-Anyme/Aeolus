@@ -53,6 +53,7 @@ def _snapshot(
         total_sell_quantity=None,
         day_high=None,
         day_low=None,
+        expiry_date=None,
         system_status="OK",
         system_status_detail={"ws": "OK", "option_chain": "OK"},
     )

@@ -3,11 +3,11 @@
 **Goal:** Compute Spec §6.5: yesterday's completed profile shape, gap type at open vs yesterday's value area, DTE relative to Tuesday-anchored NSE expiry (holiday-shift aware).
 
 **Acceptance Criteria:**
-- [ ] Standard contract: `(raw_value, reference_band, sub_score, reason_string)` per sub-signal
-- [ ] DTE calculation is a clean, independently callable function — consumed by TASK-008 (config selection) and TASK-009 (outlook). Tuesday anchor, NSE holiday calendar, never hardcoded weekday
-- [ ] Yesterday's profile-shape classification (trend day vs balanced/rotational) exposed as a standalone enum/flag — TASK-009's headline driver; must never exist only inside a blended sub-score
-- [ ] Gap classification: gap-and-go vs gap-and-fill vs yesterday's value area
-- [ ] Zero clock-based intraday interpretation anywhere in this module
+- [x] Standard contract: `(raw_value, reference_band, sub_score, reason_string)` per sub-signal (applies to `prior_day_profile_shape`, `gap_classification`, `futures_basis_drift` — `dte()` is explicitly exempted, see ADR)
+- [x] DTE calculation is a clean, independently callable function — consumed by TASK-008 (config selection) and TASK-009 (outlook). Sourced from Dhan's own holiday-shift-aware `expiry_list` resolution (TASK-002 amendment #3), not an in-repo calendar
+- [x] Yesterday's profile-shape classification (trend day vs balanced/rotational) exposed as a standalone enum/flag — TASK-009's headline driver; must never exist only inside a blended sub-score
+- [x] Gap classification: gap-and-go vs gap-and-fill vs yesterday's value area
+- [x] Zero clock-based intraday interpretation anywhere in this module
 
 **Inputs:** Prior-session data (TASK-001 storage), open prices (TASK-002), NSE holiday calendar; Spec §6.5, Build Prompt 7.
 
@@ -19,4 +19,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md`.
 
-**Status:** DRAFT
+**Status:** COMPLETE — ADR approved 2026-07-03, implemented, tested (see `reports/debug/TASK-007_debug-report.md`, `reports/qa/TASK-007_qa-report.md`). Not yet merged.

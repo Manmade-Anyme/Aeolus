@@ -9,7 +9,7 @@ backfilled or interpolated.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel
@@ -61,5 +61,8 @@ class IngestionSnapshot(BaseModel):
     total_sell_quantity: int | None  # futures leg, from the same Full packet as volume
     day_high: float | None  # futures leg session high, from the same Full packet
     day_low: float | None  # futures leg session low, from the same Full packet
+    expiry_date: date | None  # nearest NIFTY option expiry, from Dhan's expiry_list endpoint
+    # (TASK-002 amendment #3, TASK-007 ADR) -- already holiday-shift aware; resolved once per
+    # session by IngestionService.start(), never recomputed from a calendar in this module
     system_status: SystemStatus
     system_status_detail: dict[str, PathStatus]  # per-path, e.g. {"ws": "OK", "option_chain": "STALE"}

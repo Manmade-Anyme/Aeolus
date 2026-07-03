@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from aeolus.ingestion.models import (
     DepthLevel,
@@ -41,6 +41,7 @@ def test_snapshot_all_fields_present():
         total_sell_quantity=700_000,
         day_high=24600.0,
         day_low=24400.0,
+        expiry_date=date(2026, 7, 7),
         system_status="OK",
         system_status_detail={"ws": "OK", "option_chain": "OK"},
     )
@@ -70,6 +71,7 @@ def test_snapshot_tolerates_fully_missing_data_as_none_not_defaults():
         total_sell_quantity=None,
         day_high=None,
         day_low=None,
+        expiry_date=None,
         system_status="DISCONNECTED",
         system_status_detail={"ws": "DISCONNECTED", "option_chain": "DISCONNECTED"},
     )
