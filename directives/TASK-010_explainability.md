@@ -3,10 +3,10 @@
 **Goal:** One small templating utility that every category module (TASK-003..007) and the composite level (TASK-008) call to produce reason strings — no string-building duplicated per module.
 
 **Acceptance Criteria:**
-- [ ] Call signature: takes `(raw_value, reference_band, sub_score)` (+ signal identity), returns consistent reason string
-- [ ] Deterministic: same inputs → byte-identical string, every time (property test this)
-- [ ] Zero free-text / LLM generation — reason traces to a specific number crossing a specific threshold
-- [ ] Composite-level transition explanation cites the category/categories whose sub-score movement actually drove the flip
+- [x] Call signature: takes `(raw_value, reference_band, sub_score)` (+ signal identity), returns consistent reason string
+- [x] Deterministic: same inputs → byte-identical string, every time (property test this)
+- [x] Zero free-text / LLM generation — reason traces to a specific number crossing a specific threshold
+- [x] Composite-level transition explanation cites the category/categories whose sub-score movement actually drove the flip
 
 **Inputs:** Spec §10, Build Prompt 10.
 
@@ -18,4 +18,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md` — constraint #3 IS this module.
 
-**Status:** DRAFT
+**Status:** COMPLETE — ADR approved, implemented, tested (see `reports/debug/TASK-010_debug-report.md`, `reports/qa/TASK-010_qa-report.md`), 2026-07-03.

@@ -13,6 +13,7 @@ from typing import Any
 
 from supabase import Client, create_client
 
+from aeolus.explain.reason import explain_transition
 from aeolus.ingestion.models import IngestionSnapshot
 from aeolus.signals import context as context_signals
 from aeolus.signals import gamma as gamma_signals
@@ -374,7 +375,13 @@ class Engine:
                 from_state=previous_confirmed_state,
                 to_state=confirmed_state,
                 trigger_categories=trigger_categories,
-                reason=f"composite={composite:.2f} confirmed after {config.confirmation_cycles} cycles",
+                reason=explain_transition(
+                    previous_confirmed_state,
+                    confirmed_state,
+                    trigger_categories,
+                    composite,
+                    config.confirmation_cycles,
+                ),
             )
             self._client.table(StateTransition.TABLE).insert(
                 transition.model_dump(mode="json")

@@ -1,6 +1,6 @@
-"""Interim reason-string stub (TASK-003 ADR), signature-compatible with
-TASK-010's eventual real templater. Nothing in signal modules changes when
-TASK-010 lands.
+"""Reason-string templating (TASK-010 ADR). Every category module
+(TASK-003..007) calls template_reason; the composite level (TASK-008's
+engine.py) calls explain_transition for state-transition messages.
 
 Deterministic, pinned 2-decimal float formatting. Never LLM-narrated, never
 free-text (constraint #3).
@@ -29,3 +29,26 @@ def template_reason(
         extras = ", ".join(f"{key}={val:.2f}" for key, val in sorted(context.items()))
         reason = f"{reason} [{extras}]"
     return reason
+
+
+def explain_transition(
+    from_state: str,
+    to_state: str,
+    trigger_categories: list[str],
+    composite_score: float,
+    confirmation_cycles: int,
+) -> str:
+    """Deterministic composite-level transition explanation (Spec §10: must
+    cite the category/categories whose sub-score movement actually drove the
+    flip). trigger_categories is caller-selected (TASK-008's engine.py picks
+    these via its own threshold) -- this function only templates the string,
+    it never re-derives which categories qualify.
+    """
+    if trigger_categories:
+        cited = ", ".join(sorted(trigger_categories))
+    else:
+        cited = "broad-based shift across categories"
+    return (
+        f"{from_state}->{to_state} driven by {cited}; "
+        f"composite={composite_score:.2f}, confirmed after {confirmation_cycles} cycles"
+    )
