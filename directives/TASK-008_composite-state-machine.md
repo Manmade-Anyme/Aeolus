@@ -20,4 +20,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md` — constraint #1 enforced here above all.
 
-**Status:** COMPLETE — ADR approved 2026-07-03, implemented, tested (see `reports/debug/TASK-008_debug-report.md`, `reports/qa/TASK-008_qa-report.md`). Not yet merged.
+**Status:** COMPLETE — merged to `main` ([PR #10](https://github.com/dubeyshantanu2/Aeolus/pull/10), commit `72d8716`), 2026-07-03. ADR approved, implemented, tested (see `reports/debug/TASK-008_debug-report.md`, `reports/qa/TASK-008_qa-report.md`), merged same day.
