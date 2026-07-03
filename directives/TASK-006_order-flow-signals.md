@@ -3,10 +3,10 @@
 **Goal:** Compute Spec §6.4: CVD build direction + divergence from price, delta imbalance/absorption at range extremes, session-relative volume-participation range.
 
 **Acceptance Criteria:**
-- [ ] Standard contract: `(raw_value, reference_band, sub_score, reason_string)` per sub-signal
-- [ ] Price progress without CVD confirmation flagged as fragile move (divergence signal)
-- [ ] Volume-participation range = range formed by first X% of cumulative session volume — NEVER a fixed time window
-- [ ] ⚠️ GATE: OPEN_DECISIONS #1 must be resolved before building the volume-participation piece. If resolved "drop," ship with the first two sub-signals only.
+- [x] Standard contract: `(raw_value, reference_band, sub_score, reason_string)` per sub-signal
+- [x] Price progress without CVD confirmation flagged as fragile move (divergence signal)
+- [x] Volume-participation range = range formed by first X% of cumulative session volume — NEVER a fixed time window
+- [x] ⚠️ GATE: OPEN_DECISIONS #1 must be resolved before building the volume-participation piece. If resolved "drop," ship with the first two sub-signals only. — resolved "include as specified"
 
 **Inputs:** Market depth / trade feed from TASK-002; Spec §6.4, Build Prompt 6.
 
@@ -18,4 +18,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md` — the no-clock rule is why this range is volume-based.
 
-**Status:** DRAFT — blocked partially on OPEN_DECISIONS #1
+**Status:** IMPLEMENTED — ADR approved 2026-07-03 (blocking TASK-002 ingestion amendment approved and shipped same day: volume/total_buy_quantity/total_sell_quantity/day_high/day_low), code + tests complete (see `reports/debug/TASK-006_debug-report.md`, `reports/qa/TASK-006_qa-report.md`), pending PR/merge to `main` on `feature/TASK-006-order-flow-signals`.

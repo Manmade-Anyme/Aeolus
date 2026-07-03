@@ -48,6 +48,11 @@ def _snapshot(
         option_chain=option_chain,
         india_vix=None,
         gift_nifty=None,
+        volume=None,
+        total_buy_quantity=None,
+        total_sell_quantity=None,
+        day_high=None,
+        day_low=None,
         system_status="OK",
         system_status_detail={"ws": "OK", "option_chain": "OK"},
     )

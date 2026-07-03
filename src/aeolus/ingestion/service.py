@@ -74,6 +74,11 @@ class IngestionService:
             option_chain=option_chain,
             india_vix=self._live_feed.latest_vix_ltp(),
             gift_nifty=None,
+            volume=self._live_feed.latest_volume(),
+            total_buy_quantity=self._live_feed.latest_total_buy_quantity(),
+            total_sell_quantity=self._live_feed.latest_total_sell_quantity(),
+            day_high=self._live_feed.latest_day_high(),
+            day_low=self._live_feed.latest_day_low(),
             system_status=aggregate_status(detail),
             system_status_detail=detail,
         )
