@@ -1,10 +1,15 @@
 import inspect
+import math
+
+import pytest
 
 from aeolus.ingestion.models import Greeks, OptionStrike
 from aeolus.signals.volatility import (
+    TRADING_DAYS_PER_YEAR,
     _atm_strike,
     _resolve_atm_iv,
     expected_move_consumed_ratio,
+    implied_expected_move,
     iv_percentile_rank,
     iv_rv_spread,
     vix_level_and_roc,
@@ -165,6 +170,23 @@ def test_resolve_atm_iv_drops_bad_leg_no_fallback_to_nearby_strike():
     assert _resolve_atm_iv(chain, 24500.0) is None
 
 
+# --- implied_expected_move (TASK-008/009 shared VIX-based approximation) ---
+
+
+def test_implied_expected_move_formula():
+    result = implied_expected_move(24500.0, 13.0)
+    expected = 24500.0 * (13.0 / 100) * math.sqrt(1 / TRADING_DAYS_PER_YEAR)
+    assert result == pytest.approx(expected)
+
+
+def test_implied_expected_move_missing_spot_returns_none():
+    assert implied_expected_move(None, 13.0) is None
+
+
+def test_implied_expected_move_missing_vix_returns_none():
+    assert implied_expected_move(24500.0, None) is None
+
+
 # --- constraint check: no clock-time branching ---
 
 
@@ -174,6 +196,7 @@ def test_no_function_takes_a_clock_or_datetime_argument():
         iv_rv_spread,
         vix_level_and_roc,
         expected_move_consumed_ratio,
+        implied_expected_move,
     ):
         params = inspect.signature(fn).parameters
         for name in params:

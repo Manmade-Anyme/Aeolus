@@ -7,7 +7,6 @@ is a pure function suite.
 
 from __future__ import annotations
 
-import math
 import re
 from datetime import date, datetime, timezone
 from typing import Any
@@ -29,10 +28,6 @@ from config.profiles import EXPIRY_CONFIG, NON_EXPIRY_CONFIG
 from config.tuning import EngineConfig
 
 _CONTEXT_SUFFIX_RE = re.compile(r"\[(.+)\]$")
-
-# Sessions of trading-day expected-move: sqrt(1/252) converts India VIX's
-# annualized figure into a single trading day's implied move (ADR §7a).
-_TRADING_DAYS_PER_YEAR = 252
 
 
 def _extract_context(reason: str) -> dict[str, float]:
@@ -99,10 +94,8 @@ class Engine:
 
         # --- volatility ---
         current_iv = volatility_signals._resolve_atm_iv(snapshot.option_chain, snapshot.spot_ltp)
-        straddle_implied_expected_move = (
-            snapshot.spot_ltp * (snapshot.india_vix / 100) * math.sqrt(1 / _TRADING_DAYS_PER_YEAR)
-            if snapshot.spot_ltp is not None and snapshot.india_vix is not None
-            else None
+        straddle_implied_expected_move = volatility_signals.implied_expected_move(
+            snapshot.spot_ltp, snapshot.india_vix
         )
         volatility_results = {
             "iv_percentile_rank": safe_call(

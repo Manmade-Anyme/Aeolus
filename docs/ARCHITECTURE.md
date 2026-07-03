@@ -77,6 +77,7 @@ See `DATA_MODEL.md`. Live and backtest data are the same append-only log.
 - Yesterday's profile-shape classification is a standalone enum/flag from TASK-007 — the Outlook's headline driver, never buried in a blended score.
 - Reason strings flow one way: signal modules → explain util → engine → Discord. No module invents its own string format.
 - Two output models, never mixed: Outlook = forecast prior (archetype probabilities, no NO-GO/PREPARE/GO vocabulary); Live State = the three states only.
+- `volatility.implied_expected_move` (VIX-based, TASK-008 §7a) is a shared function — both the live engine (`expected_move_consumed_ratio`'s denominator) and the pre-market Outlook (`straddle_level_vs_history`) call the same one, not two copies of the same formula.
 
 ## Dual configuration
 
