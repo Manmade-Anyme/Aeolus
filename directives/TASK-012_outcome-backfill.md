@@ -3,10 +3,10 @@
 **Goal:** After-the-fact enrichment job: join forward realized outcomes (+15/+30/+60 min straddle price change, realized move, direction) onto `signal_snapshots`/`state_transitions`, and backfill realized archetype onto `daily_outlook`.
 
 **Acceptance Criteria:**
-- [ ] Writes `outcome_labels` rows keyed to snapshots/transitions
-- [ ] Updates `daily_outlook.realized_archetype` for the session
-- [ ] Runs end-of-day or delayed — NEVER live/synchronously with the scoring loop (labels don't exist at signal-time)
-- [ ] Idempotent: re-running for a session doesn't duplicate labels
+- [x] Writes `outcome_labels` rows keyed to snapshots/transitions
+- [x] Updates `daily_outlook.realized_archetype` for the session
+- [x] Runs end-of-day or delayed — NEVER live/synchronously with the scoring loop (labels don't exist at signal-time)
+- [x] Idempotent: re-running for a session doesn't duplicate labels
 
 **Inputs:** Stored session data (TASK-001); Spec §9/§11, Build Prompt 12.
 
@@ -18,4 +18,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md`.
 
-**Status:** DRAFT
+**Status:** COMPLETE — ADR approved, implemented, tested (see `reports/debug/TASK-012_debug-report.md`, `reports/qa/TASK-012_qa-report.md`), 2026-07-03.
