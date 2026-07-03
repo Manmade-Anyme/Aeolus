@@ -35,6 +35,60 @@ ARCHETYPE_STATE_LEAN: dict[DayArchetype, str] = {
 _MAX_FIELD_LEN = 1024
 _RETRY_BACKOFF_SECONDS = (1.0, 2.0, 4.0)
 
+_CATEGORY_LABELS: dict[str, str] = {
+    "volatility": "Volatility",
+    "gamma": "Gamma",
+    "oi_structure": "OI Structure",
+    "order_flow": "Order Flow",
+    "context": "Context",
+}
+
+_INPUT_LABELS: dict[str, str] = {
+    "gift_nifty_gap": "GIFT Nifty Gap",
+    "iv_percentile_heading_in": "IV Percentile (heading in)",
+    "vix_level_and_roc_heading_in": "VIX Level & RoC (heading in)",
+    "oi_max_pain_carryover": "OI Max Pain (carryover)",
+    "prior_close_pcr_level": "Prior Close PCR",
+    "futures_gap": "Futures Gap",
+    "inside_prior_value_area": "Inside Prior Value Area",
+    "dte": "DTE",
+}
+
+_SUB_SIGNAL_LABELS: dict[str, str] = {
+    "iv_percentile_rank": "IV Percentile Rank",
+    "iv_rv_spread": "IV-RV Spread",
+    "vix_level_and_roc": "VIX Level & RoC",
+    "expected_move_consumed_ratio": "Expected Move Consumed",
+    "gex_regime": "GEX Regime",
+    "spot_distance_from_flip": "Distance from Gamma Flip",
+    "pcr_level_and_roc": "PCR Level & RoC",
+    "oi_buildup_classification": "OI Buildup",
+    "oi_wall_proximity_and_strength": "OI Wall Proximity",
+    "max_pain_drift": "Max Pain Drift",
+    "cvd_direction_and_divergence": "CVD Direction/Divergence",
+    "delta_imbalance_and_absorption": "Delta Imbalance/Absorption",
+    "volume_participation_range": "Volume Participation",
+    "prior_day_profile_shape": "Prior Day Profile",
+    "gap_classification": "Gap Classification",
+    "futures_basis_drift": "Futures Basis Drift",
+}
+
+_ARCHETYPE_LABELS: dict[str, str] = {
+    "clean_trend": "Clean Trend",
+    "grinding_trend": "Grinding Trend",
+    "pinned_range": "Pinned Range",
+    "choppy_range": "Choppy Range",
+    "breakout_transition": "Breakout Transition",
+    "event_gap": "Event Gap",
+    "double_distribution": "Double Distribution",
+}
+
+
+def _archetype_label(value: Any) -> str:
+    if not isinstance(value, str):
+        return _fmt(value)
+    return _ARCHETYPE_LABELS.get(value, value)
+
 
 class DiscordDeliveryError(Exception):
     """Raised after retry attempts are exhausted. Never swallowed internally --
@@ -58,28 +112,89 @@ def _truncate(text: str) -> str:
     return text[: _MAX_FIELD_LEN - len(marker)] + marker
 
 
+# ANSI color codes inside ```ansi fenced blocks only render on Discord
+# desktop/web, not mobile (confirmed 2026-07-04) -- emoji indicators instead,
+# identical rendering everywhere.
+_FAVORABLE_EMOJI = "\U0001f7e2"  # green
+_NEUTRAL_EMOJI = "\U0001f7e1"  # yellow
+_UNFAVORABLE_EMOJI = "\U0001f534"  # red
+
+# Same favorable/neutral/unfavorable band engine.py already uses to pick
+# trigger_categories (abs(score - 0.5) >= 0.1) -- reused here, not reinvented.
+_FAVORABLE_THRESHOLD = 0.6
+_UNFAVORABLE_THRESHOLD = 0.4
+
+
+def _score_emoji(score: float | None) -> str:
+    if score is None:
+        return ""
+    if score >= _FAVORABLE_THRESHOLD:
+        return _FAVORABLE_EMOJI
+    if score <= _UNFAVORABLE_THRESHOLD:
+        return _UNFAVORABLE_EMOJI
+    return _NEUTRAL_EMOJI
+
+
+_GEX_REGIME_TYPE: dict[bool, str] = {
+    True: "Short Gamma / Trending",
+    False: "Long Gamma / Pinning",
+}
+
+
+def _gex_regime_type(raw_value: float | None) -> str | None:
+    if raw_value is None or raw_value == 0:
+        return None
+    return _GEX_REGIME_TYPE[raw_value < 0]
+
+
 def _confirm_diverge_note(to_state: MarketState, outlook: DailyOutlook | None) -> str:
     if outlook is None:
         return "no Outlook available for today"
+    archetype = _archetype_label(outlook.predicted_archetype)
     lean = ARCHETYPE_STATE_LEAN[outlook.predicted_archetype]
     if lean == "mixed":
-        return f"{outlook.predicted_archetype} outlook is not directly comparable to today's Outlook"
+        return f"{archetype} outlook is not directly comparable to today's Outlook"
     if to_state == "PREPARE":
-        return f"partially confirms {outlook.predicted_archetype} outlook (lean {lean})"
+        return f"partially confirms {archetype} outlook (lean {lean})"
     if to_state == lean:
-        return f"confirms {outlook.predicted_archetype} outlook"
-    return f"diverges from {outlook.predicted_archetype} outlook (lean {lean})"
+        return f"confirms {archetype} outlook"
+    return f"diverges from {archetype} outlook (lean {lean})"
+
+
+def _score_line(name: str, entry: Any) -> str:
+    """Score-only display -- no raw_value/reference_band clutter (per human
+    feedback: readable score number, not the underlying config). gex_regime
+    gets an extra regime-type annotation (short-gamma/trending vs
+    long-gamma/pinning), derived from its raw_value's sign."""
+    label = _SUB_SIGNAL_LABELS.get(name, name)
+    if not isinstance(entry, dict) or entry.get("raw_value") is None:
+        return f"{label}: no data"
+    sub_score = entry.get("sub_score")
+    text = f"{label}: {_fmt(sub_score)}"
+    if name == "gex_regime":
+        regime = _gex_regime_type(entry.get("raw_value"))
+        if regime:
+            text = f"{text} ({regime})"
+    return text
 
 
 def _category_breakdown_fields(snapshot: SignalSnapshot) -> list[dict[str, Any]]:
     fields: list[dict[str, Any]] = []
     for category, readings in snapshot.raw_readings.items():
         sub_signal_names = [name for name in readings if name in SUB_SIGNAL_NAMES]
-        lines = [snapshot.reasons.get(name, f"{name}: unavailable") for name in sub_signal_names]
+        bullets = []
+        for name in sub_signal_names:
+            entry = readings.get(name)
+            sub_score = entry.get("sub_score") if isinstance(entry, dict) else None
+            emoji = _score_emoji(sub_score)
+            prefix = f"{emoji} " if emoji else "• "
+            bullets.append(f"{prefix}{_score_line(name, entry)}")
         score = snapshot.sub_scores.get(category)
-        header = f"score={_fmt(score)}"
-        value = _truncate(f"{header}\n" + "\n".join(lines) if lines else header)
-        fields.append({"name": category, "value": value, "inline": False})
+        header_emoji = _score_emoji(score)
+        header = f"{header_emoji} score = {_fmt(score)}" if header_emoji else f"score = {_fmt(score)}"
+        value = _truncate("\n".join([header] + bullets) if bullets else header)
+        name = _CATEGORY_LABELS.get(category, category)
+        fields.append({"name": name, "value": value, "inline": False})
     return fields
 
 
@@ -100,8 +215,9 @@ class DiscordDispatcher:
             {
                 "name": "Forecast",
                 "value": (
-                    f"Primary: {outlook.predicted_archetype} ({_fmt(outlook.archetype_confidence)})\n"
-                    f"Secondary: {_fmt(inputs.get('secondary_archetype'))} "
+                    f"• **Primary:** {_archetype_label(outlook.predicted_archetype)} "
+                    f"({_fmt(outlook.archetype_confidence)})\n"
+                    f"• **Secondary:** {_archetype_label(inputs.get('secondary_archetype'))} "
                     f"({_fmt(inputs.get('secondary_confidence'))})"
                 ),
                 "inline": False,
@@ -110,19 +226,9 @@ class DiscordDispatcher:
                 "name": "Contributing inputs",
                 "value": _truncate(
                     "\n".join(
-                        f"{key}={_fmt(inputs.get(key))}"
-                        for key in (
-                            "gift_nifty_gap",
-                            "iv_percentile_heading_in",
-                            "vix_level_and_roc_heading_in",
-                            "oi_max_pain_carryover",
-                            "prior_close_pcr_level",
-                            "futures_gap",
-                            "inside_prior_value_area",
-                            "dte",
-                        )
+                        f"• **{label}:** {_fmt(inputs.get(key))}" for key, label in _INPUT_LABELS.items()
                     )
-                    + f"\nstraddle_level_vs_history={_fmt(outlook.straddle_level_vs_history)}"
+                    + f"\n• **Straddle Level vs History:** {_fmt(outlook.straddle_level_vs_history)}"
                 ),
                 "inline": False,
             },
@@ -152,13 +258,13 @@ class DiscordDispatcher:
         fields.append(
             {
                 "name": "vs Morning Outlook",
-                "value": _confirm_diverge_note(transition.to_state, outlook),
+                "value": f"• {_confirm_diverge_note(transition.to_state, outlook)}",
                 "inline": False,
             }
         )
         embed = {
             "title": f"AEOLUS -- {transition.from_state} -> {transition.to_state}",
-            "description": f"composite={_fmt(snapshot.composite_score)} | {transition.reason}",
+            "description": transition.reason,
             "color": _MARKET_STATE_COLOR[transition.to_state],
             "fields": fields,
         }

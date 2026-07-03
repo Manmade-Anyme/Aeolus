@@ -106,7 +106,7 @@ def test_post_outlook_hits_market_webhook_with_forecast_and_inputs():
     assert len(recorder.requests) == 1
     assert str(recorder.requests[0].url) == "https://discord.test/market"
     body = recorder.requests[0].content.decode()
-    assert "clean_trend" in body
+    assert "Clean Trend" in body
     assert "0.62" in body
 
 
@@ -129,10 +129,31 @@ def test_post_transition_includes_category_breakdown_and_confirms():
     dispatcher.post_transition(_transition(), _snapshot(), _outlook())
 
     body = recorder.requests[0].content.decode()
-    assert "iv_percentile_rank: 42.50" in body
-    assert "gex_regime: 1.00" in body
+    assert "IV Percentile Rank" in body and "0.60" in body
+    assert "GEX Regime" in body and "Long Gamma / Pinning" in body  # raw_value=1.0 -> positive
+    assert "iv_percentile_rank:" not in body  # raw identifier swapped for a label
+    assert "42.50" not in body  # raw_value/band no longer shown, score only
     assert "current_iv" not in body  # _carry filtered out
-    assert "confirms clean_trend outlook" in body
+    assert "confirms Clean Trend outlook" in body
+
+
+def test_post_transition_humanizes_no_data_reason():
+    recorder = _Recorder([(204, None)])
+    dispatcher = DiscordDispatcher(
+        "https://discord.test/market", "https://discord.test/status", transport=httpx.MockTransport(recorder)
+    )
+    base = _snapshot()
+    raw_readings = {**base.raw_readings, "gamma": {**base.raw_readings["gamma"]}}
+    raw_readings["gamma"]["gex_regime"] = {"raw_value": None, "reference_band": [-1.0, 1.0], "sub_score": 0.5}
+    snapshot = _snapshot(
+        raw_readings=raw_readings,
+        reasons={**base.reasons, "gex_regime": "gex_regime: no data"},
+    )
+    dispatcher.post_transition(_transition(), snapshot, _outlook())
+
+    body = recorder.requests[0].content.decode()
+    assert "GEX Regime" in body and "no data" in body
+    assert "gex_regime:" not in body
 
 
 def test_post_transition_diverges_from_outlook():
@@ -145,7 +166,7 @@ def test_post_transition_diverges_from_outlook():
     )
 
     body = recorder.requests[0].content.decode()
-    assert "diverges from clean_trend outlook" in body
+    assert "diverges from Clean Trend outlook" in body
 
 
 def test_post_transition_no_outlook_available():

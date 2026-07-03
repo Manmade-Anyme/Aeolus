@@ -97,3 +97,15 @@ class DiscordDeliveryError(Exception):
 - [ ] Retry test: simulated 429/5xx/timeout triggers bounded retry; simulated 400 does not retry; exhausted retries raise `DiscordDeliveryError`
 - [ ] Archetype confirm/diverge test covering all 7 archetypes × 3 target states, plus `outlook=None`
 - [ ] Constraint check: no per-signal veto (n/a), no clock logic (n/a, no clock access here), deterministic reasons (this module renders TASK-010's strings verbatim, adds no free-text beyond the fixed confirm/diverge template), polarity correct (GO=green/favorable framing, NO_GO=red/sit-out framing, never inverted)
+
+## Amendment (2026-07-04): Readability pass, human-directed
+
+Live-tested against the real Discord channels over several rounds (human feedback each round, not a single upfront design). Net result — display-only changes, `template_reason`'s deterministic templated string (constraint #3) is never altered, only re-presented:
+
+1. **Human-readable labels** for categories, sub-signals, and `DayArchetype` values (`_CATEGORY_LABELS`/`_SUB_SIGNAL_LABELS`/`_ARCHETYPE_LABELS` in `discord.py`) replace raw snake_case identifiers (`iv_percentile_rank` -> "IV Percentile Rank", `clean_trend` -> "Clean Trend") everywhere they're displayed, including inside `_confirm_diverge_note`.
+2. **Score-only sub-signal lines** — dropped `raw_value`/`reference_band` from the per-sub-signal breakdown (human: "don't show me configs, just the score number"). `_score_line` reads `sub_score` straight from `raw_readings[category][name]`, not by parsing the reason string.
+3. **`gex_regime` regime-type annotation** — appends "Short Gamma / Trending" (raw_value < 0) or "Long Gamma / Pinning" (raw_value > 0), derived from the sign already documented in `gamma.gex_regime`'s own docstring. Not a new signal, not a new score — a display label mapped straight off the existing raw_value sign convention.
+4. **Fixed a real duplication bug**: `post_transition`'s description was showing `composite=0.67 | ...composite=0.67...` (the embed description prefix duplicated what `explain_transition`'s own reason string already includes). Now shows `transition.reason` directly.
+5. **Color-coding, two iterations**: first tried ANSI SGR codes inside ```ansi fenced code blocks (renders as real color on Discord desktop/web) — confirmed via live mobile screenshot that Discord's mobile client does **not** render ANSI, showing raw escape-code text instead. Reverted to 🟢/🟡/🔴 emoji indicators (same favorable/neutral/unfavorable threshold `engine.py` already uses for `trigger_categories`: score >=0.6 / <=0.4 / between) — renders identically on mobile and desktop, confirmed via a second live mobile screenshot.
+
+No new tests needed for the ADR's original Definition of Done criteria (all still hold); `tests/output/test_discord.py` updated in place for the new display format (12 tests, +1 for the `gex_regime` "no data" fallback path via `raw_value=None` rather than a canned reason string).
