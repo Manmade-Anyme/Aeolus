@@ -14,7 +14,7 @@ import statistics
 from aeolus.explain.reason import template_reason
 from aeolus.ingestion.models import OptionStrike
 
-from .contract import MIN_LOOKBACK_SESSIONS, SignalResult, _percentile_rank
+from .contract import MIN_LOOKBACK_SESSIONS, SignalResult, _clamp01, _percentile_rank
 
 
 def _atm_strike(option_chain: list[OptionStrike], spot_ltp: float | None) -> OptionStrike | None:
@@ -55,10 +55,6 @@ def _realized_vol(trailing_spot_history: list[float]) -> float | None:
     if len(log_returns) < 2:
         return None
     return statistics.stdev(log_returns) * math.sqrt(252) * 100
-
-
-def _clamp01(value: float) -> float:
-    return max(0.0, min(1.0, value))
 
 
 def iv_percentile_rank(

@@ -27,3 +27,8 @@ def _percentile_rank(value: float, history: list[float]) -> float:
     if not history:
         return 0.5
     return sum(1 for h in history if h <= value) / len(history)
+
+
+def _clamp01(value: float) -> float:
+    """Clamp value to the 0.0-1.0 sub_score range."""
+    return max(0.0, min(1.0, value))
