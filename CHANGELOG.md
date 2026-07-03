@@ -21,5 +21,6 @@ All notable changes to AEOLUS. Format loosely follows [Keep a Changelog](https:/
 - 2026-07-03 — TASK-002: recurrence of the TASK-001 `.pth`-hidden-flag editable-install issue; additionally hardened pytest to no longer depend on the editable-install `.pth` at all (`pythonpath = ["src"]` in `pyproject.toml`).
 
 ### Resolved
+- 2026-07-03 — OPEN_DECISIONS #2 (DTE-graduated weighting): binary for v1, ARES `config_profiles.py` pattern — two complete expiry/non-expiry tables, no partial overrides; table selected from TASK-007's DTE output (holiday-aware). Graduated weighting deferred to v2 pending TASK-012 outcome-label data. Unblocks TASK-008. See `docs/OPEN_DECISIONS.md`.
 - 2026-07-03 — OPEN_DECISIONS #3 (historical backfill): no, live-forward only. See `docs/OPEN_DECISIONS.md`.
 - 2026-07-03 — OPEN_DECISIONS #4 (futures basis): include now as a raw field on every TASK-002 ingestion snapshot; drift/trend interpretation deferred to the signal layer. See `docs/OPEN_DECISIONS.md`.

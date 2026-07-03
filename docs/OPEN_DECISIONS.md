@@ -7,16 +7,16 @@ From Spec §14. **Each must be resolved with the human before the affected modul
 Reframe of "opening range" to stay compliant with the no-clock-logic rule: the range formed by the first X% of the day's cumulative volume, not the first N minutes.
 
 - Options: include as specified / drop entirely / redefine
-- **Status:** OPEN
-- **Resolution:** —
+- **Status:** RESOLVED (2026-07-03)
+- **Resolution:** Include as specified. Range = first X% of cumulative session volume (X proposed and tuned in `directives/adr/TASK-006_order-flow-signals.md`). Unblocks TASK-006's third sub-signal.
 
 ## 2. DTE-graduated weighting — affects TASK-008
 
 v1 spec = strict binary expiry/non-expiry config. Alternative: continuous DTE-based weighting (Monday behaves closer to Tuesday than Wednesday does).
 
 - Options: keep binary for v1 (spec default) / graduated in v1
-- **Status:** OPEN — spec default is binary; confirm
-- **Resolution:** —
+- **Status:** RESOLVED (2026-07-03)
+- **Resolution:** Binary for v1, following the production-proven ARES pattern (`config_profiles.py`): two *complete* config tables (expiry-day vs non-expiry-day), each a full instance of the same schema — no partial overrides, no interpolation. Profile selected once per session and applied whole. Aeolus-specific mapping: expiry-day determination = TASK-007's DTE output (holiday-aware calendar per project constraints — not ARES's weekday shortcut); TASK-008's config loader selects the table from that DTE value (per its acceptance criteria) and the engine never reads the calendar itself. Rationale: no historical data exists to calibrate a DTE curve (decision #3 = live-forward only) — graduated weights in v1 would be guesses. Revisit graduation in v2 once TASK-012 outcome labels accumulate; config schema stays swappable-table-shaped so graduation is additive.
 
 ## 3. Historical backfill — affects TASK-001 scope, adds workstream if yes
 

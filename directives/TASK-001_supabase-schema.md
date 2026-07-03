@@ -20,4 +20,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md` — esp. system_status ≠ market_state.
 
-**Status:** COMPLETE — merged to `main` (PR #1). Live DB verification against real Postgres still outstanding (see `reports/qa/TASK-001_qa-report.md`)
+**Status:** COMPLETE — merged to `main` (PR #1). Live DB verification completed via PR #2 (commit `17ba312`): schema applied to the real Supabase project, `outcome_labels` FK/CHECK conflict found and fixed (migration `0006`), live integration suite 8/8.

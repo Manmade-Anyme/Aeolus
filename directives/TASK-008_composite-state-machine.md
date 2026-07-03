@@ -20,4 +20,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md` — constraint #1 enforced here above all.
 
-**Status:** DRAFT — blocked on OPEN_DECISIONS #2
+**Status:** DRAFT — unblocked; OPEN_DECISIONS #2 resolved 2026-07-03 (binary dual-config, ARES pattern: two complete tables, no partial overrides; config loader selects table from TASK-007's DTE output). Still requires TASK-003..007 ALL complete per build order.
