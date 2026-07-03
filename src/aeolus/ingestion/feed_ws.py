@@ -1,4 +1,7 @@
-"""Live WebSocket feed (TASK-002 ADR): spot LTP, futures LTP, market depth.
+"""Live WebSocket feed (TASK-002 ADR): spot LTP, futures LTP, market depth,
+futures volume/total_buy_quantity/total_sell_quantity/day_high/day_low
+(TASK-006 amendment — all five already arrive in the same futures Full
+packet, previously unparsed).
 
 Wraps dhanhq.MarketFeed (v2 binary wire protocol -- struct-level packet
 parsing lives in the SDK, not reimplemented here). Reconnect/backoff is owned
@@ -58,6 +61,11 @@ class LiveFeed:
         self._futures_ltp: float | None = None
         self._vix_ltp: float | None = None
         self._depth: MarketDepth | None = None
+        self._volume: int | None = None
+        self._total_buy_quantity: int | None = None
+        self._total_sell_quantity: int | None = None
+        self._day_high: float | None = None
+        self._day_low: float | None = None
 
         self._running = False
         self._thread: threading.Thread | None = None
@@ -87,6 +95,26 @@ class LiveFeed:
     def latest_depth(self) -> MarketDepth | None:
         with self._lock:
             return self._depth
+
+    def latest_volume(self) -> int | None:
+        with self._lock:
+            return self._volume
+
+    def latest_total_buy_quantity(self) -> int | None:
+        with self._lock:
+            return self._total_buy_quantity
+
+    def latest_total_sell_quantity(self) -> int | None:
+        with self._lock:
+            return self._total_sell_quantity
+
+    def latest_day_high(self) -> float | None:
+        with self._lock:
+            return self._day_high
+
+    def latest_day_low(self) -> float | None:
+        with self._lock:
+            return self._day_low
 
     def _supervise(self) -> None:
         asyncio.run(self._supervise_async())
@@ -137,6 +165,11 @@ class LiveFeed:
             with self._lock:
                 self._futures_ltp = float(data["LTP"])
                 self._depth = _parse_depth(data.get("depth", []))
+                self._volume = int(data["volume"])
+                self._total_buy_quantity = int(data["total_buy_quantity"])
+                self._total_sell_quantity = int(data["total_sell_quantity"])
+                self._day_high = float(data["high"])
+                self._day_low = float(data["low"])
             self._staleness.touch("ws", now)
 
 

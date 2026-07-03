@@ -56,5 +56,10 @@ class IngestionSnapshot(BaseModel):
     option_chain: list[OptionStrike]
     india_vix: float | None  # NSE index, security_id=21, same IDX_I segment/path as spot_ltp
     gift_nifty: float | None  # structurally None — Dhan API v2 has no GIFT City/NSE IX coverage
+    volume: int | None  # futures leg, exchange's own cumulative-since-session-start counter
+    total_buy_quantity: int | None  # futures leg, from the same Full packet as volume
+    total_sell_quantity: int | None  # futures leg, from the same Full packet as volume
+    day_high: float | None  # futures leg session high, from the same Full packet
+    day_low: float | None  # futures leg session low, from the same Full packet
     system_status: SystemStatus
     system_status_detail: dict[str, PathStatus]  # per-path, e.g. {"ws": "OK", "option_chain": "STALE"}

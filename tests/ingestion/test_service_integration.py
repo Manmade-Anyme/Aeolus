@@ -43,5 +43,9 @@ def test_ingestion_service_end_to_end():
         # india_vix may still be None if the WS hasn't ticked in the 5s window --
         # not asserting a value, only that the field exists on the model.
         assert hasattr(snapshot, "india_vix")
+        # Same for the TASK-006 amendment fields -- parsed from the futures Full
+        # packet, may still be None in a short observation window.
+        for field in ("volume", "total_buy_quantity", "total_sell_quantity", "day_high", "day_low"):
+            assert hasattr(snapshot, field)
     finally:
         service.stop()
