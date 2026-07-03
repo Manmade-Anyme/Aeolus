@@ -54,6 +54,7 @@ class IngestionSnapshot(BaseModel):
     futures_basis: float | None  # futures_ltp - spot_ltp; None if either leg stale/missing
     depth: MarketDepth | None
     option_chain: list[OptionStrike]
+    india_vix: float | None  # NSE index, security_id=21, same IDX_I segment/path as spot_ltp
     gift_nifty: float | None  # structurally None — Dhan API v2 has no GIFT City/NSE IX coverage
     system_status: SystemStatus
     system_status_detail: dict[str, PathStatus]  # per-path, e.g. {"ws": "OK", "option_chain": "STALE"}

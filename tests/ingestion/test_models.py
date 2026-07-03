@@ -34,11 +34,13 @@ def test_snapshot_all_fields_present():
                 put_greeks=_greeks(),
             )
         ],
+        india_vix=13.2,
         gift_nifty=None,
         system_status="OK",
         system_status_detail={"ws": "OK", "option_chain": "OK"},
     )
     assert snapshot.futures_basis == 50.0
+    assert snapshot.india_vix == 13.2
     assert snapshot.gift_nifty is None
     assert snapshot.option_chain[0].strike == 24500
 
@@ -51,10 +53,12 @@ def test_snapshot_tolerates_fully_missing_data_as_none_not_defaults():
         futures_basis=None,
         depth=None,
         option_chain=[],
+        india_vix=None,
         gift_nifty=None,
         system_status="DISCONNECTED",
         system_status_detail={"ws": "DISCONNECTED", "option_chain": "DISCONNECTED"},
     )
     assert snapshot.spot_ltp is None
     assert snapshot.futures_ltp is None
+    assert snapshot.india_vix is None
     assert snapshot.option_chain == []

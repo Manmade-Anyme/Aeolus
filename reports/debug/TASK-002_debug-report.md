@@ -43,3 +43,13 @@
 - [x] Polarity check: GO favors option buying — n/a, no market-state interpretation here
 - [x] `system_status` never feeds `market_state` — this module produces `system_status` only; it has no concept of `market_state` at all, structurally impossible to conflate
 - [x] Direct futures feed only, no synthetic put-call-parity derivation — confirmed by code inspection: `futures_ltp` comes solely from the WS `Full` subscription on the futures security_id; no parity calculation exists anywhere in the module
+
+## Amendment (2026-07-03) — India VIX + lot_size
+
+**What was run:** `python -m pytest tests/ -q`, `python -m ruff check src tests`, `python -m mypy src/aeolus` — all clean, 37/37 passing (was 36; +1 new VIX-resolution test, 2 existing tests extended in place). Live end-to-end test ran during market hours; `service.lot_size` and VIX subscription both exercised against real Dhan WS/REST.
+
+**Observed behavior:** VIX ticks arrive on the same `Ticker Data` message type as spot, distinguished only by `security_id` — no new packet type or parsing logic needed in `feed_ws.py`, just a third entry in `LiveFeed._instruments` and one more branch in `_on_message`. `lot_size` resolution required no new HTTP call — `SEM_LOT_UNITS` was already present on the same futures rows `resolve_current_month_futures` was already reading, just not previously extracted.
+
+**Issues:** none. No environment recurrence this pass (`.pth`/`UF_HIDDEN` issue did not reappear — `pyproject.toml`'s `pythonpath = ["src"]` hardening from the original TASK-002 pass held).
+
+**Not resolved, flagged only:** live scrip master shows a `Gift Nifty` row (`security_id=5024`, `NSE`/`I` segment) that appears to contradict this task's original `[x]` GIFT-Nifty-absent finding. Out of scope for this amendment (human explicitly scoped VIX + lot_size only) — see ADR Amendment section for detail. Not verified as a live-ticking feed vs. a stale listing.

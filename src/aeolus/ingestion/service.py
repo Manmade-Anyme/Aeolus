@@ -23,6 +23,7 @@ class IngestionService:
         self._live_feed: LiveFeed | None = None
         self._option_poller: OptionChainPoller | None = None
         self._option_expiry: date | None = None
+        self.lot_size: int | None = None
 
     def start(self) -> None:
         """Authenticates, resolves instruments, opens WS, ready for polling."""
@@ -30,11 +31,15 @@ class IngestionService:
         self._instruments.refresh()
 
         spot_id = self._instruments.resolve_spot()
+        vix_id = self._instruments.resolve_vix()
         futures = self._instruments.resolve_current_month_futures(
             datetime.now(timezone.utc).date()
         )
+        self.lot_size = futures.lot_size
 
-        self._live_feed = LiveFeed(credentials, spot_id, futures.security_id, self._staleness)
+        self._live_feed = LiveFeed(
+            credentials, spot_id, futures.security_id, vix_id, self._staleness
+        )
         self._live_feed.start()
 
         self._option_poller = OptionChainPoller(credentials, spot_id, self._staleness)
@@ -67,6 +72,7 @@ class IngestionService:
             futures_basis=futures_basis,
             depth=self._live_feed.latest_depth(),
             option_chain=option_chain,
+            india_vix=self._live_feed.latest_vix_ltp(),
             gift_nifty=None,
             system_status=aggregate_status(detail),
             system_status_detail=detail,

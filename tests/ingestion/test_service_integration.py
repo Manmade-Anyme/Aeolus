@@ -39,5 +39,9 @@ def test_ingestion_service_end_to_end():
         if snapshot.spot_ltp is not None and snapshot.futures_ltp is not None:
             assert snapshot.futures_basis == snapshot.futures_ltp - snapshot.spot_ltp
         assert snapshot.ts.tzinfo is not None
+        assert service.lot_size is not None and service.lot_size > 0
+        # india_vix may still be None if the WS hasn't ticked in the 5s window --
+        # not asserting a value, only that the field exists on the model.
+        assert hasattr(snapshot, "india_vix")
     finally:
         service.stop()
