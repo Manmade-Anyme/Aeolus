@@ -20,4 +20,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md`.
 
-**Status:** IMPLEMENTED — ADR approved 2026-07-03 (blocking dependency resolved same day: futures-direction buildup classification, no ingestion amendment), code + tests complete (see `reports/debug/TASK-005_debug-report.md`, `reports/qa/TASK-005_qa-report.md`), pending PR/merge to `main` on `feature/TASK-005-oi-structure-signals`.
+**Status:** COMPLETE — merged to `main` (PR #7, commit `6e46575`), 2026-07-03. ADR approved (blocking dependency resolved same day: futures-direction buildup classification, no ingestion amendment), implemented, tested (see `reports/debug/TASK-005_debug-report.md`, `reports/qa/TASK-005_qa-report.md`), merged same day.
