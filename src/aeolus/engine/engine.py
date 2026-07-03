@@ -68,7 +68,9 @@ class Engine:
         self._state.clear_session_scoped()
         self._previous_iv = None
 
-    def run_cycle(self, snapshot: IngestionSnapshot, lot_size: int) -> SignalSnapshot:
+    def run_cycle(
+        self, snapshot: IngestionSnapshot, lot_size: int
+    ) -> tuple[SignalSnapshot, StateTransition | None]:
         if self._session_date is None:
             raise RuntimeError("Engine.start() must be called first")
 
@@ -366,6 +368,7 @@ class Engine:
             row.model_dump(mode="json")
         ).execute()
 
+        transition: StateTransition | None = None
         if flipped:
             trigger_categories = [
                 name for name, score in category_scores.items() if abs(score - 0.5) >= 0.1
@@ -390,7 +393,7 @@ class Engine:
         state.previous_snapshot = snapshot
         self._previous_iv = current_iv
 
-        return row
+        return row, transition
 
 
 def safe_call_profile_shape(

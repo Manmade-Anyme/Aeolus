@@ -95,7 +95,8 @@ def engine():
 
 def test_run_cycle_writes_a_signal_snapshot_row(engine):
     snapshot = _snapshot(datetime(1999, 6, 15, 9, 20, tzinfo=timezone.utc))
-    result = engine.run_cycle(snapshot, LOT_SIZE)
+    result, transition = engine.run_cycle(snapshot, LOT_SIZE)
+    assert transition is None  # first-ever cycle, nothing to flip from
 
     assert result.session_date == SESSION_DATE
     assert result.config_type == "NON_EXPIRY"
@@ -140,7 +141,7 @@ def test_second_cycle_uses_first_as_previous_snapshot(engine):
     snapshot -- confirms the engine actually threads state.previous_snapshot
     through, not just that it degrades gracefully on cycle 1."""
     engine.run_cycle(_snapshot(datetime(1999, 6, 15, 9, 20, tzinfo=timezone.utc), futures_ltp=24500.0), LOT_SIZE)
-    second = engine.run_cycle(
+    second, _ = engine.run_cycle(
         _snapshot(datetime(1999, 6, 15, 9, 21, tzinfo=timezone.utc), futures_ltp=24520.0), LOT_SIZE
     )
     pcr_reading = second.raw_readings["oi_structure"]["pcr_level_and_roc"]
@@ -157,12 +158,16 @@ def test_hysteresis_flip_writes_state_transition(engine):
     engine._state.pending_state = "GO"
 
     last_result = None
+    last_transition = None
     for i in range(3):
-        last_result = engine.run_cycle(
+        last_result, last_transition = engine.run_cycle(
             _snapshot(datetime(1999, 6, 15, 9, 20 + i, tzinfo=timezone.utc)), LOT_SIZE
         )
 
     assert last_result.market_state != "GO"
+    assert last_transition is not None
+    assert last_transition.from_state == "GO"
+    assert last_transition.to_state == last_result.market_state
 
     transitions = (
         engine._client.table("state_transitions")
