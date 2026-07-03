@@ -3,12 +3,12 @@
 **Goal:** Wire TASK-002..011 into the continuous live loop (9:15–15:30 IST), plus single pre-open trigger for TASK-009 and single post-close trigger for TASK-012.
 
 **Acceptance Criteria:**
-- [ ] Loop runs across full NSE session; schedule-gating ("is the market open") lives HERE and only here
-- [ ] No module inside the loop branches its own logic on current time — scheduler owns *when*, never *how to interpret*
-- [ ] Pre-open: TASK-009 fires exactly once per session
-- [ ] Post-close: TASK-012 fires once per session
-- [ ] NSE trading calendar aware (holidays, shortened sessions)
-- [ ] Graceful shutdown/restart mid-session without corrupting state (debounce counters, CVD continuity via TASK-002)
+- [x] Loop runs across full NSE session; schedule-gating ("is the market open") lives HERE and only here
+- [x] No module inside the loop branches its own logic on current time — scheduler owns *when*, never *how to interpret*
+- [x] Pre-open: TASK-009 fires exactly once per session
+- [x] Post-close: TASK-012 fires once per session
+- [x] NSE trading calendar aware (holidays, shortened sessions)
+- [x] Graceful shutdown/restart mid-session without corrupting state (debounce counters, CVD continuity via TASK-002)
 
 **Inputs:** All prior modules; Spec §7/§13, Build Prompt 13.
 
@@ -20,4 +20,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md` — constraint #2's only permitted clock-awareness lives here, and only as "is market open."
 
-**Status:** DRAFT
+**Status:** COMPLETE — ADR approved, implemented, tested (see `reports/debug/TASK-013_debug-report.md`, `reports/qa/TASK-013_qa-report.md`), 2026-07-04. Fly.io deployment/cron scheduling deferred by human direction — see `docs/OPEN_DECISIONS.md` #5.

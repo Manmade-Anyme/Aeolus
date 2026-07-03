@@ -31,3 +31,15 @@ Futures − spot and its drift through the session, as optional secondary positi
 
 - **Status:** RESOLVED (2026-07-03)
 - **Resolution:** Include now. TASK-002 exposes `futures_basis` (futures_ltp − spot_ltp) as a raw field on every ingestion snapshot. Session-drift interpretation scoped in `directives/adr/TASK-007_context-signals.md` (function 5, `futures_basis_drift`): reuses the confirm/diverge-vs-price-trend shape already established by CVD/PCR/GEX, human-approved 2026-07-03 with the "could be pure cost-of-carry noise, not real positioning signal" counter-argument flagged for later empirical check via `outcome_labels`.
+
+## 5. Fly.io deployment & cron scheduling — affects TASK-013 deployment (not its code)
+
+AEOLUS will deploy on Fly.io, scaled up/down by an external cron (same pattern as ARES — see Obsidian `Projects/Ares/09_Deployment.md`: cron-job.org calling the Fly Machines API directly, since GitHub Actions cron proved too delayed). Target window: machine up ~9:00 AM IST (gives a real pre-market buffer before the 9:15 open), machine down by ~3:31 PM IST. `Scheduler.run()` (TASK-013) is written to exit cleanly once its session is done specifically so this scale-to-0 pattern works without a separate "stop" trigger, mirroring ARES's `main.py`.
+
+- **Status:** DEFERRED — explicitly not resolved now, by human direction ("this we will discuss when the project is working as expected at last")
+- **TODO (not started):**
+  - [ ] `fly.toml` (no `[http_service]` — background worker, avoids healthcheck failures, per ARES precedent)
+  - [ ] Fly app + region choice (ARES uses `bom`/Mumbai for latency; confirm same for AEOLUS)
+  - [ ] cron-job.org (or equivalent) wired to `api.machines.dev` to scale 0→1 at session start
+  - [ ] Confirm whether a symmetric scale-1→0 cron is still needed as a belt-and-suspenders stop, or whether `Scheduler.run()` exiting is sufficient alone (ARES kept both)
+  - [ ] Re-run `scripts/fetch_nse_holidays.py` closer to 2026-11-08 to pick up muhurat-session hours once NSE publishes them (currently `null` in the live API response)
