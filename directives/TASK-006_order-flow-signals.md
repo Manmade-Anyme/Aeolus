@@ -18,4 +18,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md` — the no-clock rule is why this range is volume-based.
 
-**Status:** IMPLEMENTED — ADR approved 2026-07-03 (blocking TASK-002 ingestion amendment approved and shipped same day: volume/total_buy_quantity/total_sell_quantity/day_high/day_low), code + tests complete (see `reports/debug/TASK-006_debug-report.md`, `reports/qa/TASK-006_qa-report.md`), pending PR/merge to `main` on `feature/TASK-006-order-flow-signals`.
+**Status:** COMPLETE — merged to `main` (PR #8, commit `5a91e49`), 2026-07-03. ADR approved (blocking TASK-002 ingestion amendment approved and shipped same day: volume/total_buy_quantity/total_sell_quantity/day_high/day_low), implemented, tested (see `reports/debug/TASK-006_debug-report.md`, `reports/qa/TASK-006_qa-report.md`), merged same day.
