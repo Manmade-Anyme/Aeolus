@@ -18,4 +18,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md` — esp. no clock logic, deterministic reasons.
 
-**Status:** IMPLEMENTED — ADR approved 2026-07-03, code + tests complete (see `reports/debug/TASK-003_debug-report.md`, `reports/qa/TASK-003_qa-report.md`), pending PR/merge to `main` on `feature/TASK-003-volatility-signals`.
+**Status:** COMPLETE — merged to `main` (PR #5, commit `613be16`), 2026-07-03. ADR approved, implemented, tested (see `reports/debug/TASK-003_debug-report.md`, `reports/qa/TASK-003_qa-report.md`), merged same day.
