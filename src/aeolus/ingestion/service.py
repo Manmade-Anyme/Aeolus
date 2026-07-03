@@ -79,6 +79,7 @@ class IngestionService:
             total_sell_quantity=self._live_feed.latest_total_sell_quantity(),
             day_high=self._live_feed.latest_day_high(),
             day_low=self._live_feed.latest_day_low(),
+            expiry_date=self._option_expiry,
             system_status=aggregate_status(detail),
             system_status_detail=detail,
         )

@@ -32,8 +32,8 @@ Live loop (event-driven, continuous):
   ├─ 003 Volatility   (IV %ile, IV-RV, VIX, expected-move-consumed)
   ├─ 004 Gamma        (GEX/zero-gamma flip: sign + normalized magnitude)
   ├─ 005 OI Structure (PCR + RoC, buildup classes, walls, max-pain drift)
-  ├─ 006 Order Flow   (CVD, absorption, volume-participation range*)
-  └─ 007 Context      (yesterday profile, gap type, DTE — Tuesday-anchored)
+  ├─ 006 Order Flow   (CVD, absorption, volume-participation range)
+  └─ 007 Context      (yesterday profile, gap type, DTE, futures-basis drift)
         │                                     │
         │             DTE flag ───────────────┘
         ▼
@@ -51,8 +51,6 @@ Live loop (event-driven, continuous):
   ├─ outlook msg / state-transition msg / system-status msg (distinct format)
   └─ transition msg cites driving categories + confirm/diverge vs Outlook
 ```
-
-\* volume-participation range pending OPEN_DECISIONS #1.
 
 ## Storage (TASK-001, Supabase/Postgres)
 
