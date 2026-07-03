@@ -3,10 +3,10 @@
 **Goal:** Format and post the three Spec §12 message types via webhook: Pre-Market Outlook, state-transition, system-status alert.
 
 **Acceptance Criteria:**
-- [ ] Outlook message: archetype forecast, confidence, key contributing inputs (trend-exhaustion lead line when applicable)
-- [ ] State-transition message: new state, composite score, per-category breakdown with TASK-010 reason strings, explicit confirm/diverge note vs current session's `daily_outlook` row
-- [ ] System-status alert: terse, visually/structurally DISTINCT from market-state messages (separate channel or unmistakable format) — "market is dead" vs "feed is dead" must never require careful reading to distinguish
-- [ ] Posts only on genuine debounced transitions (TASK-008 already gates this; this module must not add its own state logic)
+- [x] Outlook message: archetype forecast, confidence, key contributing inputs (trend-exhaustion lead line when applicable)
+- [x] State-transition message: new state, composite score, per-category breakdown with TASK-010 reason strings, explicit confirm/diverge note vs current session's `daily_outlook` row
+- [x] System-status alert: terse, visually/structurally DISTINCT from market-state messages (separate channel or unmistakable format) — "market is dead" vs "feed is dead" must never require careful reading to distinguish
+- [x] Posts only on genuine debounced transitions (TASK-008 already gates this; this module must not add its own state logic)
 
 **Inputs:** TASK-008 transitions, TASK-009 outlook rows, TASK-010 strings; Spec §12, Build Prompt 11.
 
@@ -18,4 +18,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md`.
 
-**Status:** DRAFT
+**Status:** COMPLETE — ADR approved, implemented, tested (see `reports/debug/TASK-011_debug-report.md`, `reports/qa/TASK-011_qa-report.md`), 2026-07-03.
