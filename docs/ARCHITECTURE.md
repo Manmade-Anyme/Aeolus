@@ -37,10 +37,10 @@ Live loop (event-driven, continuous):
         │                                     │
         │             DTE flag ───────────────┘
         ▼
-  TASK-008 Composite Scorer & State Machine
-  ├─ config loader: expiry vs non-expiry weight/threshold tables (config/)
-  ├─ weighted sum → NO_GO / PREPARE / GO
-  ├─ hysteresis/debounce before flip
+  TASK-008 Composite Scorer & State Machine — first module w/ real I/O
+  ├─ config: EXPIRY_CONFIG/NON_EXPIRY_CONFIG (config/, ARES pydantic-settings pattern)
+  ├─ equal-weighted category avg → weighted composite → NO_GO / PREPARE / GO
+  ├─ N-cycle hysteresis before flip; safe_call isolates a crashing sub-signal
   └─ writes signal_snapshots (every cycle) + state_transitions (flips only)
         │
         ▼
@@ -80,4 +80,4 @@ See `DATA_MODEL.md`. Live and backtest data are the same append-only log.
 
 ## Dual configuration
 
-`config/` holds two weight/threshold tables (expiry-day, non-expiry-day). Same formulas, same category structure — only weights/thresholds differ. Selected by DTE at runtime. Expiry day: gamma/OI walls weighted higher, IV bands recalibrated lower, GO bar raised. (Spec §8.)
+`config/tuning.py` (schema) + `config/profiles.py` (`EXPIRY_CONFIG`/`NON_EXPIRY_CONFIG` — two complete, hardcoded instances, ARES's `pydantic-settings` pattern, not YAML). Same formulas, same category structure — only weights/thresholds differ. Selected by `dte()==0` at runtime, TASK-008's job. Expiry day: gamma/OI walls weighted higher, IV bands recalibrated lower, GO bar raised. (Spec §8.)
