@@ -23,4 +23,4 @@ For getting dhan credentials Follow [[DHAN Refresh token]] from obsidian valut
 
 **Global constraints:** see `docs/CONSTRAINTS.md`.
 
-**Status:** COMPLETE (pending PR merge) — ADR approved 2026-07-03, implemented + live-verified same day (see `reports/debug/TASK-002_debug-report.md`)
+**Status:** COMPLETE — merged to `main` (PR #3, commit `403138b`), 2026-07-03. ADR approved, implemented, live-verified, and merged same day (see `reports/debug/TASK-002_debug-report.md`).
