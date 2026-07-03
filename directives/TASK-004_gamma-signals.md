@@ -17,4 +17,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md`.
 
-**Status:** IMPLEMENTED — ADR approved 2026-07-03, code + tests complete (see `reports/debug/TASK-004_debug-report.md`, `reports/qa/TASK-004_qa-report.md`), pending PR/merge to `main` on `feature/TASK-004-gamma-signals`.
+**Status:** COMPLETE — merged to `main` (PR #6, commit `89ff79c`), 2026-07-03. ADR approved, implemented, tested (see `reports/debug/TASK-004_debug-report.md`, `reports/qa/TASK-004_qa-report.md`), merged same day.
