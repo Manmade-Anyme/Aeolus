@@ -18,4 +18,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md` — constraint #3 IS this module.
 
-**Status:** COMPLETE — ADR approved, implemented, tested (see `reports/debug/TASK-010_debug-report.md`, `reports/qa/TASK-010_qa-report.md`), 2026-07-03.
+**Status:** COMPLETE — merged to `main` ([PR #12](https://github.com/dubeyshantanu2/Aeolus/pull/12), commit `ff680f9`), 2026-07-03. ADR approved, implemented, tested (see `reports/debug/TASK-010_debug-report.md`, `reports/qa/TASK-010_qa-report.md`), merged same day.
