@@ -18,4 +18,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md`.
 
-**Status:** COMPLETE — merged to `main` ([PR #13](https://github.com/dubeyshantanu2/Aeolus/pull/13), commit `87d992e`), 2026-07-03. ADR approved, implemented, tested (see `reports/debug/TASK-011_debug-report.md`, `reports/qa/TASK-011_qa-report.md`), merged same day.
+**Status:** COMPLETE — merged to `main` ([PR #13](https://github.com/dubeyshantanu2/Aeolus/pull/13), commit `87d992e`), 2026-07-03. ADR approved, implemented, tested (see `reports/debug/TASK-011_debug-report.md`, `reports/qa/TASK-011_qa-report.md`), merged same day. Readability amendment merged via [PR #16](https://github.com/dubeyshantanu2/Aeolus/pull/16) (commit `e05f83d`), 2026-07-04 — see ADR amendment section.
