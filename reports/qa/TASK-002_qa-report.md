@@ -47,3 +47,15 @@ None in the ingestion code itself. One environment issue (recurrence of TASK-001
 - Option-chain partial-response detection (`degraded` flag) not exercised against an actual partial/short live response — only a full, healthy response was observed live.
 - No test covers the REST rate-limit behavior directly (Dhan's exact per-symbol option-chain limit was not independently confirmed against live docs — this module doesn't self-throttle, so a caller polling too aggressively would just see more `status != "success"` responses feeding into `STALE`/`DISCONNECTED` over time, not a hard crash, but this hasn't been deliberately triggered).
 - `system_status` per-path detail currently tracks only `ws` and `option_chain` — if a future task wants separate visibility into "spot feed dead but futures feed fine" (both currently share the single `ws` heartbeat), that would need a small refactor to per-instrument heartbeats.
+
+## Amendment (2026-07-03) — India VIX + lot_size
+
+**Trigger:** blocking dependencies flagged in TASK-003/TASK-004 ADRs (volatility and gamma signal modules needed VIX and lot_size respectively, neither exposed by this module as originally shipped).
+
+**Test summary:** 37/37 passing (was 36). New: `test_resolve_vix_is_india_vix_index`. Extended in place: `test_resolve_current_month_futures_is_unexpired_and_soonest` (now asserts `lot_size > 0`), `test_models.py` both cases (now assert `india_vix` present/`None`), `test_service_integration.py` (now asserts `service.lot_size` populated live, `india_vix` field exists on the live snapshot — value itself not asserted since it depends on the WS ticking within the 5s test window). `ruff`/`mypy` clean.
+
+**Live verification:** ran during NSE market hours, same session as the code change. VIX security_id (21) and lot_size (65) both resolved against the real scrip master; `service.lot_size == 65` confirmed live; `india_vix` field present on the live `IngestionSnapshot` (value population depends on WS tick timing within the test's observation window, same caveat as spot/futures LTP in the original TASK-002 QA pass).
+
+**Gaps / follow-ups (new):**
+- `india_vix` value itself not asserted in the live test (only field presence) — same class of gap as the original spot/futures live test, not a regression.
+- GIFT Nifty finding (`security_id=5024`, `NSE`/`I` segment, appears to contradict this task's original absence finding) explicitly not investigated this pass — flagged in the debug report and ADR amendment, needs a dedicated follow-up during live market hours.

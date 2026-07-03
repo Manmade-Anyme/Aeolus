@@ -11,6 +11,14 @@ guessed: SEM_EXM_EXCH_ID="NSE", SEM_SEGMENT="I" for the index / "D" for
 derivatives, SEM_INSTRUMENT_NAME in {"INDEX","FUTIDX","OPTIDX"},
 SEM_TRADING_SYMBOL "NIFTY" (index) / "NIFTY-<Mon><Year>-FUT" (futures) /
 "NIFTY-<Mon><Year>-<strike>-CE|PE" (options).
+
+India VIX confirmed present in the same file, same segment: SEM_SEGMENT="I",
+SEM_TRADING_SYMBOL="INDIA VIX" (2026-07-03) -- same IDX_I subscription path
+as spot, no new segment/vendor needed (TASK-003 ADR blocking dependency #1).
+
+SEM_LOT_UNITS confirmed present on futures/option rows (65 for NIFTY,
+2026-07-03) -- resolved here instead of hardcoded in signal modules
+(TASK-004 ADR's gex_regime needs it).
 """
 
 from __future__ import annotations
@@ -28,12 +36,14 @@ _NSE = "NSE"
 _INDEX_SEGMENT = "I"
 _DERIVATIVES_SEGMENT = "D"
 _NIFTY_PREFIX = "NIFTY-"
+_INDIA_VIX_SYMBOL = "INDIA VIX"
 
 
 @dataclass(frozen=True)
 class ResolvedFutures:
     security_id: str
     expiry: date
+    lot_size: int
 
 
 class InstrumentResolver:
@@ -67,6 +77,17 @@ class InstrumentResolver:
             raise LookupError("NIFTY spot index not found in scrip master")
         return str(int(rows.iloc[0]["SEM_SMST_SECURITY_ID"]))
 
+    def resolve_vix(self) -> str:
+        df = self._frame()
+        rows = df[
+            (df["SEM_EXM_EXCH_ID"] == _NSE)
+            & (df["SEM_SEGMENT"] == _INDEX_SEGMENT)
+            & (df["SEM_TRADING_SYMBOL"] == _INDIA_VIX_SYMBOL)
+        ]
+        if rows.empty:
+            raise LookupError("India VIX not found in scrip master")
+        return str(int(rows.iloc[0]["SEM_SMST_SECURITY_ID"]))
+
     def resolve_current_month_futures(self, as_of: date) -> ResolvedFutures:
         df = self._frame()
         rows = df[
@@ -85,4 +106,5 @@ class InstrumentResolver:
         return ResolvedFutures(
             security_id=str(int(nearest["SEM_SMST_SECURITY_ID"])),
             expiry=nearest["expiry_date"],
+            lot_size=int(nearest["SEM_LOT_UNITS"]),
         )

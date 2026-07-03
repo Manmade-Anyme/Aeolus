@@ -39,20 +39,24 @@ class LiveFeed:
         credentials: DhanCredentials,
         spot_security_id: str,
         futures_security_id: str,
+        vix_security_id: str,
         staleness: StalenessTracker,
     ) -> None:
         self._context = DhanContext(credentials.client_id, credentials.access_token)
         self._instruments = [
             (MarketFeed.IDX, spot_security_id, MarketFeed.Ticker),
             (MarketFeed.NSE_FNO, futures_security_id, MarketFeed.Full),
+            (MarketFeed.IDX, vix_security_id, MarketFeed.Ticker),
         ]
         self._spot_security_id = spot_security_id
         self._futures_security_id = futures_security_id
+        self._vix_security_id = vix_security_id
         self._staleness = staleness
 
         self._lock = threading.Lock()
         self._spot_ltp: float | None = None
         self._futures_ltp: float | None = None
+        self._vix_ltp: float | None = None
         self._depth: MarketDepth | None = None
 
         self._running = False
@@ -75,6 +79,10 @@ class LiveFeed:
     def latest_futures_ltp(self) -> float | None:
         with self._lock:
             return self._futures_ltp
+
+    def latest_vix_ltp(self) -> float | None:
+        with self._lock:
+            return self._vix_ltp
 
     def latest_depth(self) -> MarketDepth | None:
         with self._lock:
@@ -118,6 +126,11 @@ class LiveFeed:
         if msg_type == "Ticker Data" and security_id == self._spot_security_id:
             with self._lock:
                 self._spot_ltp = float(data["LTP"])
+            self._staleness.touch("ws", now)
+
+        elif msg_type == "Ticker Data" and security_id == self._vix_security_id:
+            with self._lock:
+                self._vix_ltp = float(data["LTP"])
             self._staleness.touch("ws", now)
 
         elif msg_type == "Full Data" and security_id == self._futures_security_id:

@@ -106,3 +106,23 @@ Signal modules (TASK-003..007) import only `IngestionSnapshot` and its nested mo
 - [x] GIFT Nifty existence verified — confirmed absent from Dhan API v2 (no NSE IX segment in the SDK); `gift_nifty` ships as a structurally-`None` field, excluded from `system_status`
 - [ ] Partial option-chain response does not crash the service and does not falsely flip `system_status` on a single short cycle
 - [ ] Constraint check: no per-signal veto (n/a — no scoring here), no clock-time branching (staleness is heartbeat-elapsed-time-based, not wall-clock-based — confirm thresholds are relative durations, not "before/after HH:MM"), deterministic reasons (n/a — this module has no reason strings, only raw data + status), polarity (n/a)
+
+## ADR Amendment (2026-07-03) — India VIX + lot_size
+
+**Trigger:** TASK-003 (volatility signals) needed India VIX, which `IngestionSnapshot` didn't carry; TASK-004 (gamma signals) needed NIFTY lot size. Both were flagged as blocking dependencies in the TASK-003/TASK-004 ADRs rather than silently reopening this already-merged module.
+
+**Resolution — verified against live data before writing any code, not guessed:** re-pulled `https://images.dhan.co/api-data/api-scrip-master.csv` (the same compact CSV `instruments.py` already parses, no new file/dependency) and confirmed:
+- India VIX: `SEM_TRADING_SYMBOL="INDIA VIX"`, `SEM_SEGMENT="I"`, `SEM_SMST_SECURITY_ID=21` — same `IDX_I` index segment NIFTY spot already subscribes through.
+- `SEM_LOT_UNITS` column present on futures/option rows — NIFTY lot size = 65 as of 2026-07-03.
+
+**Changes:**
+- `models.py` — added `india_vix: float | None` to `IngestionSnapshot`.
+- `instruments.py` — added `InstrumentResolver.resolve_vix() -> str`; added `lot_size: int` to `ResolvedFutures`.
+- `feed_ws.py` — `LiveFeed` now subscribes a third `IDX`/`Ticker` instrument (VIX) alongside spot; new `latest_vix_ltp()`; VIX ticks feed the same `"ws"` staleness path as spot/futures (same WS connection, no new heartbeat key).
+- `service.py` — resolves VIX security_id and lot_size at `start()`; exposes `IngestionService.lot_size: int | None` (session-scoped, resolved once, not part of the per-cycle `IngestionSnapshot` — lot size is static contract metadata, not a live market value, per TASK-004 ADR's reasoning); populates `india_vix` on every `latest()` call.
+
+No changes to `system_status`/`system_status_detail` shape — VIX shares the existing `ws` key.
+
+**Bonus finding, explicitly not acted on here:** the same live scrip-master pull also shows `DISPLAY_NAME="Gift Nifty"` at `SECURITY_ID=5024`, `EXCH_ID=NSE`, `SEGMENT=I` (from the *detailed* scrip master, `api-scrip-master-detailed.csv`) — which appears to contradict this ADR's `[x]` Definition-of-Done item above (GIFT Nifty confirmed absent, based on reading `dhanhq` SDK source constants, not live instrument data). **Not resolved as part of this amendment** — human explicitly scoped this pass to VIX + lot_size only. Whether `5024` is a real, live-ticking GIFT Nifty feed or a stale/placeholder listing is unverified. Flagging here so it isn't lost; recommend a follow-up check (live market hours) before either trusting or dismissing it.
+
+**Tests:** `test_resolve_vix_is_india_vix_index` (new), `test_resolve_current_month_futures_is_unexpired_and_soonest` (extended to assert `lot_size > 0`), `test_models.py` (extended for `india_vix` present/`None` paths), `test_service_integration.py` (extended to assert `service.lot_size` populated live). Full suite 37/37 passing, `ruff`/`mypy` clean.
