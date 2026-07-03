@@ -29,5 +29,5 @@ Is backtesting against pre-launch dates a hard requirement? If yes → historica
 
 Futures − spot and its drift through the session, as optional secondary positioning/sentiment signal. Direct futures feed already required, so marginal cost is low. Spec default: v2.
 
-- **Status:** OPEN — spec default is leave for v2; confirm
-- **Resolution:** —
+- **Status:** RESOLVED (2026-07-03)
+- **Resolution:** Include now. TASK-002 exposes `futures_basis` (futures_ltp − spot_ltp) as a raw field on every ingestion snapshot. Session-drift interpretation (trend of basis over the day) is signal-module logic, not ingestion's job — deferred to whichever signal module consumes it (TASK-007 context, most likely), scoped when that module's ADR is written.
