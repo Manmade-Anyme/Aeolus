@@ -16,6 +16,22 @@ from aeolus.ingestion.models import OptionStrike
 
 from .contract import MIN_LOOKBACK_SESSIONS, SignalResult, _clamp01, _percentile_rank
 
+TRADING_DAYS_PER_YEAR = 252
+
+
+def implied_expected_move(spot_ltp: float | None, india_vix: float | None) -> float | None:
+    """VIX-implied one-trading-day expected move: spot_ltp * (india_vix/100) *
+    sqrt(1/252) (TASK-008 ADR §7a, TASK-009 ADR §1). Deliberately a constant
+    full-day figure, not decayed by elapsed session time -- avoids any caller
+    needing to read a clock (constraint #2). Used both live (TASK-008, as
+    expected_move_consumed_ratio's straddle_implied_expected_move) and
+    pre-market (TASK-009's straddle_level_vs_history). None if either input
+    is missing.
+    """
+    if spot_ltp is None or india_vix is None:
+        return None
+    return spot_ltp * (india_vix / 100) * math.sqrt(1 / TRADING_DAYS_PER_YEAR)
+
 
 def _atm_strike(option_chain: list[OptionStrike], spot_ltp: float | None) -> OptionStrike | None:
     """Closest strike to spot_ltp. No fallback to a nearby strike on failure."""
