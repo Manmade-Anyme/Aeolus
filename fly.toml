@@ -1,5 +1,5 @@
 app = 'aeolus'
-primary_region = 'bom'
+primary_region = 'sin'
 
 [build]
   dockerfile = './Dockerfile'
