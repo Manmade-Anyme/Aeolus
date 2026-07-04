@@ -24,3 +24,4 @@ class MLTuning(BaseSettings):
     random_state: int = 42
     model_cache_ttl_seconds: int = 300
     min_dwell_cycles: int = 0  # 0 = off; N blocks any state flip until current state held >= N cycles
+    ml_discord_webhook_url: str | None = None  # None -> caller (TASK-021) falls back to the market webhook
