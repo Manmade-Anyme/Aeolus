@@ -43,3 +43,41 @@ AEOLUS will deploy on Fly.io, scaled up/down by an external cron (same pattern a
   - [ ] cron-job.org (or equivalent) wired to `api.machines.dev` to scale 0→1 at session start
   - [ ] Confirm whether a symmetric scale-1→0 cron is still needed as a belt-and-suspenders stop, or whether `Scheduler.run()` exiting is sufficient alone (ARES kept both)
   - [ ] Re-run `scripts/fetch_nse_holidays.py` closer to 2026-11-08 to pick up muhurat-session hours once NSE publishes them (currently `null` in the live API response)
+
+---
+
+## ML Anomaly Module (from `files/AEOLUS_ML_ANOMALY_SPEC.md` §10 + one repo discrepancy)
+
+## 6. Cleanup job does not exist — affects TASK-014 ⚠️ repo/spec discrepancy
+
+ML Spec §3.2 and Build Prompt 1 assume an *existing* end-of-day cleanup job that trims `signal_snapshots`, and require modifying it + testing that `ml_*` survives it. The repo has **no cleanup job** — storage is an append-only log by design (`docs/DATA_MODEL.md`).
+
+- **Status:** RESOLVED (2026-07-04)
+- **Resolution:** **Build a real retention job now**, as part of TASK-014. Driver: `CYCLE_INTERVAL_SECONDS = 5.0` → ~4,500 cycles/session → ~20–25 MB/day across engine + ML tables ≈ 5+ GB/year on a Supabase instance shared with ARES — append-only forever is not viable. Policy (human-approved): trim `signal_snapshots` and `ml_anomaly_scores` older than **90 days**; prune `ml_model_registry` to the **last 30 versions per config**; NEVER touch `ml_feature_store`, `state_transitions`, `daily_outlook`, `outcome_labels` (denylist-driven, job refuses to operate on them). Runs LAST in the EOD sequence: `feature-store sync → retrain → cleanup`. Ships Build Prompt 1's run-cleanup-assert-protected-unchanged test. Steady-state DB ≈ 1.5–2 GB. This deliberately **supersedes ML Spec §6's blanket "all `ml_*` cleanup-protected"**: the training corpus (`ml_feature_store`) is absolutely protected; the advisory log (`ml_anomaly_scores`) is age-trimmed; the registry is count-pruned. Long-term supervised-phase data is preserved by `ml_feature_store` (features) + `outcome_labels` (labels), both permanent and small; `outcome_labels`' `ON DELETE SET NULL` FKs (migration 0005) were built for exactly this. Job lives engine-side in `src/aeolus/jobs/retention.py` (NOT in `aeolus.ml` — the ML module stays strictly read-only against engine tables); scheduler wiring in TASK-021 runs it after the ML EOD hook, and it runs even when ML is disabled.
+
+## 7. Rolling window length — affects TASK-017
+
+Default was 60 trading days once past warm-up (shorter = faster drift adaptation, longer = more regime diversity). Config value `window_days` in `MLTuning`.
+
+- **Status:** RESOLVED (2026-07-04)
+- **Resolution:** **30 trading days**, with retraining continuing daily (per #9) — human chose faster drift adaptation over the spec's 60-day default ("do 30 days and let it continue training"). Warm-up gates unchanged (≥10× n_features samples AND ≥15 distinct trading days per config), so the window grows from warm-up (~15 days) to the 30-day rolling cap, then rolls. `window_days = 30` in `MLTuning`, still a config value.
+
+## 8. Flag percentile — affects TASK-017/018
+
+Flag threshold = empirical percentile of training scores; clear threshold = lower hysteresis pair.
+
+- **Status:** RESOLVED (2026-07-04)
+- **Resolution:** Spec defaults confirmed — **flag = top 5%, clear = top 10%** of training-window scores, both recomputed on every retrain. `flag_pct = 0.05`, `clear_pct = 0.10` in `MLTuning`.
+
+## 9. Retrain cadence — affects TASK-021
+
+Daily end-of-day vs weekly.
+
+- **Status:** RESOLVED (2026-07-04)
+- **Resolution:** **Daily end-of-day** (spec default confirmed) — `sync → retrain → cleanup` in the scheduler's post-close sequence. Fit cost is seconds; no day-of-week logic needed anywhere.
+
+## 10. Isolation-Forest + Mahalanobis ensemble for the decision — affects TASK-022 (v2)
+
+v1: IF alone decides; Mahalanobis/z-score explains only. Two-voter decision mode is a v2 toggle (TASK-022), off by default.
+
+- **Status:** DEFERRED to v2 — do not build TASK-022 until TASK-014..021 have run in production for ≥ one full rolling window.

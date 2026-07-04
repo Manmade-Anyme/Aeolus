@@ -47,3 +47,21 @@ This is the **inverse** of premium-selling regime tools that use the same words 
 - **Direct futures feed** — never derive a synthetic future via put-call parity (Spec §2).
 - **Tuesday expiry anchor, holiday-shift aware** — computed from NSE holiday calendar, never a hardcoded weekday (Spec §8).
 - **`signal_snapshots` stores raw category data**, enough to recompute the composite retroactively if weights change — not just the final score (Build Prompt 1).
+
+---
+
+## ML overlay constraints (TASK-014..022, from `files/AEOLUS_ML_ANOMALY_SPEC.md`)
+
+The anomaly ML module is an **advisory overlay**. Four additional hard constraints, restated in every ML directive:
+
+1. **Advisory only.** The ML module never writes to engine tables, never changes NO_GO/PREPARE/GO, never gates a trade. Strictly read-only against `signal_snapshots`. The engine must run identically whether the module is present, absent, or broken (`Scheduler(ml_hooks=None)`).
+2. **Cleanup-protected persistence.** Retention policy per OPEN_DECISIONS #6 (resolved 2026-07-04, supersedes ML Spec §6's blanket `ml_*` protection): `RetentionJob` (`src/aeolus/jobs/retention.py`, TASK-014) trims `signal_snapshots` + `ml_anomaly_scores` older than 90 days and prunes `ml_model_registry` to the last 30 versions/config — and must structurally refuse to touch **`ml_feature_store`** (the training corpus, absolutely protected), `state_transitions`, `daily_outlook`, `outcome_labels`. Ships a test proving protected row counts unchanged. End-of-day order is strict and never reordered: **feature-store sync → retrain → cleanup**.
+3. **Isolation Forest decides; Mahalanobis/z-score only explains.** Per-feature attribution must never become (or influence) the flag decision.
+4. **Deterministic explanations.** Top-feature attribution is templated from numbers (z-scores) — never LLM-narrated, never free text. Same vector + model → same string.
+
+Supporting ML invariants:
+- **Debounce + hysteresis on advisories** (ML Spec §7.1): post only on the transition into anomalous; separate enter (flag) / exit (clear) thresholds. Normal day = zero ML posts.
+- **`STALE`/`DISCONNECTED` cycles are never scored or trained on** — a broken feed is not a market anomaly.
+- **Two models, never one:** independent EXPIRY / NON_EXPIRY models, selected by the engine's existing config flag; `config_type` is a selector, not a feature.
+- **Stored scaler only:** live scoring applies the training window's frozen μ/σ; never re-fit on a live vector.
+- **Time-agnostic:** no clock-time conditioning in features or models (matches engine constraint #2).
