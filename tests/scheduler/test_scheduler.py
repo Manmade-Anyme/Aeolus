@@ -109,6 +109,43 @@ class FakeBackfillJob:
         self.calls.append(session_date)
 
 
+class FakeRetentionJob:
+    def __init__(self, order_log: list | None = None):
+        self.calls: list[date] = []
+        self._order_log = order_log
+
+    def run(self, session_date: date):
+        self.calls.append(session_date)
+        if self._order_log is not None:
+            self._order_log.append("retention_job.run")
+
+
+class FakeMLHooks:
+    def __init__(self, raise_on: frozenset[str] = frozenset(), order_log: list | None = None):
+        self.start_session_calls: list[date] = []
+        self.on_cycle_calls: list = []
+        self.on_end_of_day_calls: list[date] = []
+        self._raise_on = raise_on
+        self._order_log = order_log
+
+    def start_session(self, session_date: date) -> None:
+        self.start_session_calls.append(session_date)
+        if "start_session" in self._raise_on:
+            raise RuntimeError("ml boom: start_session")
+
+    def on_cycle(self, snapshot) -> None:
+        self.on_cycle_calls.append(snapshot)
+        if "on_cycle" in self._raise_on:
+            raise RuntimeError("ml boom: on_cycle")
+
+    def on_end_of_day(self, session_date: date) -> None:
+        self.on_end_of_day_calls.append(session_date)
+        if self._order_log is not None:
+            self._order_log.append("ml_hooks.on_end_of_day")
+        if "on_end_of_day" in self._raise_on:
+            raise RuntimeError("ml boom: on_end_of_day")
+
+
 class FakeDiscord:
     def __init__(self, raise_on: frozenset[str] = frozenset()):
         self.outlook_calls: list[DailyOutlook] = []
@@ -213,6 +250,7 @@ def _make_scheduler(**overrides) -> tuple[Scheduler, dict]:
         backfill_job=FakeBackfillJob(),
         discord=FakeDiscord(),
         clock=FakeClock([datetime(2026, 7, 6, 9, 0)]),
+        retention_job=FakeRetentionJob(),
     )
     fakes.update(overrides)
     scheduler = Scheduler(
@@ -362,3 +400,85 @@ def test_cycle_exception_is_caught_and_loop_continues():
 
     assert engine.call_count == 2
     assert fakes["engine"].ended is True
+
+
+def test_ml_hooks_none_by_default_but_retention_still_runs():
+    clock = FakeClock(
+        [
+            datetime(2026, 7, 6, 9, 0),
+            datetime(2026, 7, 6, 9, 0),  # pre-open: exists=True, skip
+            datetime(2026, 7, 6, 15, 30),  # live loop exits immediately
+        ]
+    )
+    scheduler, fakes = _make_scheduler(
+        client=FakeSupabaseClient(existing_session_dates={"2026-07-06"}), clock=clock
+    )
+    scheduler.run()  # must not raise -- ml_hooks defaults to None
+
+    assert fakes["retention_job"].calls == [date(2026, 7, 6)]
+
+
+def test_ml_hooks_wired_into_start_session_on_cycle_and_end_of_day():
+    clock = FakeClock(
+        [
+            datetime(2026, 7, 6, 9, 0),
+            datetime(2026, 7, 6, 9, 0),  # pre-open: exists=True, skip
+            datetime(2026, 7, 6, 9, 20),  # live loop iter 1
+            datetime(2026, 7, 6, 15, 30),  # exit
+        ]
+    )
+    ml_hooks = FakeMLHooks()
+    scheduler, fakes = _make_scheduler(
+        client=FakeSupabaseClient(existing_session_dates={"2026-07-06"}),
+        clock=clock,
+        ml_hooks=ml_hooks,
+    )
+    scheduler.run()
+
+    assert ml_hooks.start_session_calls == [date(2026, 7, 6)]
+    assert len(ml_hooks.on_cycle_calls) == 1
+    assert ml_hooks.on_end_of_day_calls == [date(2026, 7, 6)]
+
+
+def test_ml_hooks_exceptions_at_every_call_site_never_crash_the_scheduler():
+    clock = FakeClock(
+        [
+            datetime(2026, 7, 6, 9, 0),
+            datetime(2026, 7, 6, 9, 0),
+            datetime(2026, 7, 6, 9, 20),
+            datetime(2026, 7, 6, 15, 30),
+        ]
+    )
+    ml_hooks = FakeMLHooks(raise_on=frozenset({"start_session", "on_cycle", "on_end_of_day"}))
+    scheduler, fakes = _make_scheduler(
+        client=FakeSupabaseClient(existing_session_dates={"2026-07-06"}),
+        clock=clock,
+        ml_hooks=ml_hooks,
+    )
+    scheduler.run()  # must not raise despite ml_hooks raising at every call site
+
+    assert fakes["engine"].ended is True
+    assert fakes["backfill_job"].calls == [date(2026, 7, 6)]
+    assert fakes["retention_job"].calls == [date(2026, 7, 6)]
+
+
+def test_retention_runs_after_ml_hooks_end_of_day_returns():
+    clock = FakeClock(
+        [
+            datetime(2026, 7, 6, 9, 0),
+            datetime(2026, 7, 6, 9, 0),
+            datetime(2026, 7, 6, 15, 30),
+        ]
+    )
+    order_log: list = []
+    ml_hooks = FakeMLHooks(order_log=order_log)
+    retention_job = FakeRetentionJob(order_log=order_log)
+    scheduler, fakes = _make_scheduler(
+        client=FakeSupabaseClient(existing_session_dates={"2026-07-06"}),
+        clock=clock,
+        ml_hooks=ml_hooks,
+        retention_job=retention_job,
+    )
+    scheduler.run()
+
+    assert order_log == ["ml_hooks.on_end_of_day", "retention_job.run"]
