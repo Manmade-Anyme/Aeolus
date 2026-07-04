@@ -12,6 +12,9 @@ dependencies = [
     "dhanhq>=2.2.0",
     "pandas>=1.4.3",
     "httpx>=0.27",
+    "scikit-learn>=1.5",
+    "numpy",
+    "joblib",
 ]
 
 [project.optional-dependencies]
@@ -41,5 +44,5 @@ asyncio_mode = "auto"
 pythonpath = ["src", "."]
 
 [[tool.mypy.overrides]]
-module = ["dhanhq.*", "pandas.*"]
+module = ["dhanhq.*", "pandas.*", "sklearn.*", "joblib.*"]
 ignore_missing_imports = true
