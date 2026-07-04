@@ -22,3 +22,5 @@ class MLTuning(BaseSettings):
     warmup_min_days: int = 15
     n_estimators: int = 200
     random_state: int = 42
+    model_cache_ttl_seconds: int = 300
+    min_dwell_cycles: int = 0  # 0 = off; N blocks any state flip until current state held >= N cycles
