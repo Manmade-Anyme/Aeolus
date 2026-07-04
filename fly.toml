@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for aeolus-lustrous-sea-4600 on 2026-07-05T01:08:52+05:30
+# fly.toml app configuration file generated for aeolus on 2026-07-05T01:08:52+05:30
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'aeolus-lustrous-sea-4600'
+app = 'aeolus'
 primary_region = 'bom'
 
 [http_service]
