@@ -1,7 +1,11 @@
 # QA Report — TASK-016
 
 **Date:** 2026-07-04
-**Verdict:** ⚠️ CONDITIONAL PASS — code + tests complete; live-Supabase run pending human DDL apply (same gate as TASK-014)
+**Verdict:** ✅ PASS — migrations applied same day, live suite green (after a test-only fix)
+
+## Amendment (2026-07-04, same day)
+
+Human applied migrations `0009-0011`. Re-running surfaced a real bug in `test_sync_eod_copies_unstored_snapshots_and_is_idempotent`'s cleanup: its `finally` block ran two sequential deletes, and across earlier blocked runs the first (against a table that didn't exist yet) raised and masked the second, leaking 10 synthetic `signal_snapshots` rows (`session_date=2030-03-01`, `ml_feature_store` itself stayed empty since nothing ever landed there). Fixed by independently guarding each delete; the 10 orphaned rows were removed (user-authorized). Re-ran: 4/4 live tests pass. Production code (`store.py`) was untouched — see `reports/debug/TASK-018_debug-report.md` for full detail (found during TASK-018's live verification pass, applies retroactively here).
 
 ## Test summary
 | Suite | Tests | Pass | Fail | Coverage |

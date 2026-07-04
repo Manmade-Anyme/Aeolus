@@ -137,8 +137,12 @@ def test_sync_eod_copies_unstored_snapshots_and_is_idempotent(client, store):
 
         assert store.sync_eod(SESSION_DATE) == 0  # second pass: nothing left to copy
     finally:
-        client.table("ml_feature_store").delete().eq("session_date", SESSION_DATE.isoformat()).execute()
-        client.table("signal_snapshots").delete().in_("id", [ok_id, stale_id]).execute()
+        # Each delete independently guarded: one table's cleanup failing must
+        # never mask another's (a real prior bug -- see TASK-018 debug report).
+        try:
+            client.table("ml_feature_store").delete().eq("session_date", SESSION_DATE.isoformat()).execute()
+        finally:
+            client.table("signal_snapshots").delete().in_("id", [ok_id, stale_id]).execute()
 
 
 def test_load_window_filters_config_type_and_windows_by_distinct_dates(client, store):

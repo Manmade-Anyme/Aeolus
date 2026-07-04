@@ -81,6 +81,15 @@ def _cleanup_registry(client, config_type: str) -> None:
     client.table("ml_model_registry").delete().eq("config_type", config_type).execute()
 
 
+def _safe(cleanup_fn) -> None:
+    """One cleanup call failing must never mask a later one in the same
+    finally block (a real prior bug -- see TASK-018 debug report)."""
+    try:
+        cleanup_fn()
+    except Exception:  # noqa: BLE001 -- best-effort test cleanup, never re-raise
+        pass
+
+
 def test_train_produces_trained_result_with_valid_threshold_and_round_trip_scores(client, store, trainer):
     import base64
     import io
@@ -120,8 +129,8 @@ def test_train_produces_trained_result_with_valid_threshold_and_round_trip_score
         assert registry["clear_threshold"] == pytest.approx(expected_clear)
         assert registry["flag_threshold"] > registry["clear_threshold"]
     finally:
-        _cleanup_feature_rows(client, rows)
-        _cleanup_registry(client, "NON_EXPIRY")
+        _safe(lambda: _cleanup_feature_rows(client, rows))
+        _safe(lambda: _cleanup_registry(client, "NON_EXPIRY"))
 
 
 def test_train_warming_up_insufficient_days_despite_enough_samples(client, store, trainer):
@@ -137,8 +146,8 @@ def test_train_warming_up_insufficient_days_despite_enough_samples(client, store
 
         assert client.table("ml_model_registry").select("id").eq("config_type", "EXPIRY").execute().data == []
     finally:
-        _cleanup_feature_rows(client, rows)
-        _cleanup_registry(client, "EXPIRY")
+        _safe(lambda: _cleanup_feature_rows(client, rows))
+        _safe(lambda: _cleanup_registry(client, "EXPIRY"))
 
 
 def test_train_warming_up_insufficient_samples_despite_enough_days(client, store, trainer):
@@ -152,8 +161,8 @@ def test_train_warming_up_insufficient_samples_despite_enough_days(client, store
         assert result.sample_count == 32
         assert result.trading_day_count == 16
     finally:
-        _cleanup_feature_rows(client, rows)
-        _cleanup_registry(client, "EXPIRY")
+        _safe(lambda: _cleanup_feature_rows(client, rows))
+        _safe(lambda: _cleanup_registry(client, "EXPIRY"))
 
 
 def test_train_all_two_configs_independent(client, store, trainer):
@@ -168,10 +177,10 @@ def test_train_all_two_configs_independent(client, store, trainer):
         assert results["NON_EXPIRY"].outcome == "TRAINED"
         assert results["EXPIRY"].outcome == "WARMING_UP"
     finally:
-        _cleanup_feature_rows(client, non_expiry_rows)
-        _cleanup_feature_rows(client, expiry_rows)
-        _cleanup_registry(client, "NON_EXPIRY")
-        _cleanup_registry(client, "EXPIRY")
+        _safe(lambda: _cleanup_feature_rows(client, non_expiry_rows))
+        _safe(lambda: _cleanup_feature_rows(client, expiry_rows))
+        _safe(lambda: _cleanup_registry(client, "NON_EXPIRY"))
+        _safe(lambda: _cleanup_registry(client, "EXPIRY"))
 
 
 def test_train_version_increments_and_prior_row_untouched(client, store, trainer):
@@ -214,5 +223,5 @@ def test_train_version_increments_and_prior_row_untouched(client, store, trainer
         )
         assert {row["version"] for row in all_versions} == {1, 2}
     finally:
-        _cleanup_feature_rows(client, rows)
-        _cleanup_registry(client, "NON_EXPIRY")
+        _safe(lambda: _cleanup_feature_rows(client, rows))
+        _safe(lambda: _cleanup_registry(client, "NON_EXPIRY"))
