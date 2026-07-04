@@ -1,9 +1,6 @@
 app = 'aeolus'
 primary_region = 'sin'
 
-[build]
-  dockerfile = './Dockerfile'
-
 [[services]]
   internal_port = 8080
   processes = ['app']
