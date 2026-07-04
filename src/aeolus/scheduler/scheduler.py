@@ -15,17 +15,18 @@ import logging
 import time as time_module
 from datetime import date, datetime
 from datetime import time as dt_time
-from typing import Callable
+from typing import Callable, Protocol
 from zoneinfo import ZoneInfo
 
 from supabase import Client, create_client
 
 from aeolus.engine.engine import Engine
 from aeolus.jobs.backfill import OutcomeBackfillJob
+from aeolus.jobs.retention import RetentionJob
 from aeolus.ingestion.service import IngestionService
 from aeolus.output.discord import DiscordDeliveryError, DiscordDispatcher
 from aeolus.outlook.generator import OutlookGenerator
-from aeolus.storage.models import DailyOutlook, SystemStatus
+from aeolus.storage.models import DailyOutlook, SignalSnapshot, SystemStatus
 
 from .calendar import NseCalendar
 
@@ -38,6 +39,18 @@ logger = logging.getLogger("aeolus.scheduler")
 
 def _now_ist() -> datetime:
     return datetime.now(IST)
+
+
+class MLHooksProtocol(Protocol):
+    """Structural type for TASK-021's MLHooks (src/aeolus/ml/hooks.py) --
+    deliberately NOT an import of aeolus.ml, so the scheduler never depends
+    on the ML module at runtime. The ML overlay is opt-in at the composition
+    root: only the entrypoint that constructs a real MLHooks and passes it in
+    ever imports aeolus.ml."""
+
+    def start_session(self, session_date: date) -> None: ...
+    def on_cycle(self, snapshot: SignalSnapshot) -> None: ...
+    def on_end_of_day(self, session_date: date) -> None: ...
 
 
 class Scheduler:
@@ -63,6 +76,8 @@ class Scheduler:
         backfill_job: OutcomeBackfillJob | None = None,
         discord: DiscordDispatcher | None = None,
         clock: Callable[[], datetime] = _now_ist,
+        ml_hooks: MLHooksProtocol | None = None,
+        retention_job: RetentionJob | None = None,
     ) -> None:
         self._client: Client = client or create_client(supabase_url, supabase_key)
         self._calendar = calendar or NseCalendar()
@@ -73,6 +88,10 @@ class Scheduler:
         self._discord = discord or DiscordDispatcher(market_webhook_url, status_webhook_url)
         self._cycle_interval_seconds = cycle_interval_seconds
         self._clock = clock
+        # Opt-in ML overlay: None means the engine runs byte-for-byte as it
+        # would without the ML module ever existing (see MLHooksProtocol).
+        self._ml_hooks = ml_hooks
+        self._retention_job = retention_job or RetentionJob(supabase_url, supabase_key)
 
     def run(self) -> None:
         """Blocks for at most one trading session, then returns. Not a
@@ -91,6 +110,8 @@ class Scheduler:
             self._run_live_loop(today, hours.close, outlook)
             self._engine.end_session()
             self._run_backfill(today)
+            self._run_ml_end_of_day(today)
+            self._run_retention(today)
         finally:
             self._ingestion.stop()
 
@@ -127,6 +148,12 @@ class Scheduler:
         lot_size = self._ingestion.lot_size
         last_system_status: SystemStatus | None = None
 
+        if self._ml_hooks is not None:
+            try:
+                self._ml_hooks.start_session(session_date)
+            except Exception:
+                logger.exception("ml_hooks.start_session failed for %s", session_date)
+
         while self._clock().time() < close_time:
             try:
                 snapshot = self._ingestion.latest()
@@ -144,6 +171,12 @@ class Scheduler:
                     except DiscordDeliveryError:
                         logger.exception("failed to post system status alert to Discord")
                 last_system_status = snapshot.system_status
+
+                if self._ml_hooks is not None:
+                    try:
+                        self._ml_hooks.on_cycle(signal_snapshot)
+                    except Exception:
+                        logger.exception("ml_hooks.on_cycle failed")
             except Exception:
                 logger.exception("cycle failed, continuing to next cycle")
 
@@ -154,3 +187,20 @@ class Scheduler:
             self._backfill_job.run(session_date)
         except Exception:
             logger.exception("outcome backfill failed for %s", session_date)
+
+    def _run_ml_end_of_day(self, session_date: date) -> None:
+        if self._ml_hooks is None:
+            return
+        try:
+            self._ml_hooks.on_end_of_day(session_date)
+        except Exception:
+            logger.exception("ml_hooks.on_end_of_day failed for %s", session_date)
+
+    def _run_retention(self, session_date: date) -> None:
+        """Runs LAST in the EOD sequence (sync -> retrain -> cleanup),
+        unconditionally -- retention trims engine tables regardless of
+        whether the ML overlay is enabled."""
+        try:
+            self._retention_job.run(session_date)
+        except Exception:
+            logger.exception("retention job failed for %s", session_date)
