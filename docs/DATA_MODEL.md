@@ -46,6 +46,21 @@ The labeled dataset for the pre-market forecasting model.
 ### `outcome_labels` — backfilled enrichment, never live
 For snapshots/transitions: forward realized outcome at **+15/+30/+60 min** — straddle price change, realized move, direction. Written by TASK-012 only (labels don't exist at signal-time).
 
+## ML anomaly tables (TASK-014, `files/AEOLUS_ML_ANOMALY_SPEC.md` §6)
+
+Three `ml_*` tables, migrations `0009..0011`, same conventions (hand-applied DDL, timestamptz UTC, RLS disabled). Typed models: `src/aeolus/ml/models.py` — deliberately NOT in `storage/models.py` (the engine never references ML concepts).
+
+**Retention (OPEN_DECISIONS #6, resolved 2026-07-04):** at 5s cycles the system writes ~20–25 MB/day (~4,500 cycles/session), so `RetentionJob` (`src/aeolus/jobs/retention.py`, TASK-014) runs last in the EOD sequence (`sync → retrain → cleanup`): trims `signal_snapshots` + `ml_anomaly_scores` > 90 days, prunes `ml_model_registry` to last 30 versions/config, and never touches `ml_feature_store` / `state_transitions` / `daily_outlook` / `outcome_labels`. The permanent pair `ml_feature_store` (features) + `outcome_labels` (labels) preserves everything the later supervised phase needs; `outcome_labels`' `ON DELETE SET NULL` FKs absorb snapshot deletion by design. Steady-state DB ≈ 1.5–2 GB.
+
+### `ml_feature_store` — one row per scored cycle
+The module's own persistent training corpus, copied from `signal_snapshots` numeric content (5 sub-scores + composite + key raw readings, ML Spec §4). Raw + standardized values, `source_snapshot_id` (plain UUID, no FK — trimming `signal_snapshots` can never cascade here), `feature_set_version`. `UNIQUE(source_snapshot_id)` = idempotency anchor for the sync job (TASK-016).
+
+### `ml_model_registry` — one row per trained model version
+Per config_type: base64(joblib) Isolation Forest blob, scaler μ/σ per feature, flag + clear thresholds (empirical percentiles, recomputed per retrain), window bounds, sample/day counts, sklearn version, monotonic version. All versions retained (rollback + drift comparison).
+
+### `ml_anomaly_scores` — one row per scored cycle
+Advisory output log: score, flagged, ml_status (ACTIVE/WARMING_UP), top contributing features + z-scores (transitions only), model version used.
+
 ## Scoreable datasets this produces (Spec §11)
 
 1. **Live-state accuracy** — did GO precede real premium movement; did NO-GO precede quiet stretches.

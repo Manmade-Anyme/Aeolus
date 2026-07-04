@@ -69,6 +69,30 @@ See `DATA_MODEL.md`. Live and backtest data are the same append-only log.
 | Discord output | `src/aeolus/output/` | TASK-011 |
 | Backfill job | `src/aeolus/jobs/` | TASK-012 |
 | Scheduler | `src/aeolus/scheduler/` | TASK-013 |
+| ML anomaly overlay | `src/aeolus/ml/` | TASK-014..022 |
+
+## ML anomaly overlay (TASK-014..022 — advisory, never a dependency)
+
+Spec: `files/AEOLUS_ML_ANOMALY_SPEC.md`; build order: `files/AEOLUS_ML_ANOMALY_BUILD_PROMPTS.md`. Unsupervised Isolation Forest overlay answering "is today structurally unlike any normal day learned?" — label-free, deployed before any supervised model while `outcome_labels` accumulates.
+
+```
+  Scheduler (TASK-013)
+  ├─ live loop: engine.run_cycle → MLHooks.on_cycle (TASK-021, failure-isolated)
+  │    └─ append to ml_feature_store (016) → score vs latest model (018)
+  │       └─ on ANOMALY_ENTER/CLEAR transition only (debounce+hysteresis):
+  │          top-|z| attribution (019) → 🔬 ML Discord advisory (020)
+  └─ post-close: backfill (012) → MLHooks.on_end_of_day (021):
+       feature-store sync (016) → retrain per config (017)
+       → RetentionJob (014, scheduler-owned, runs even if ML disabled):
+         trim signal_snapshots + ml_anomaly_scores >90d, prune registry to last 30/config;
+         never touches ml_feature_store / transitions / outlook / outcome_labels
+
+  TASK-014: ml_feature_store / ml_model_registry / ml_anomaly_scores + ML_PROTECTED_TABLES
+  TASK-015: SignalSnapshot → fixed-order versioned feature vector; stored-scaler standardize
+  TASK-022 (v2, deferred): drift note + IF+Mahalanobis ensemble toggle
+```
+
+Rules: advisory only (never writes engine tables, never alters market_state); two independent models (EXPIRY/NON_EXPIRY); IF decides, z-scores explain; deterministic templated reasons; STALE/DISCONNECTED never scored/trained; warm-up gating before any flag (`WARMING_UP` until ≥10×n_features samples AND ≥15 trading days per config). Engine runs identically with `ml_hooks=None`.
 
 ## Key data-flow rules
 
