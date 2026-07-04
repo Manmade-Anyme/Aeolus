@@ -1,7 +1,11 @@
 # QA Report — TASK-014
 
 **Date:** 2026-07-04
-**Verdict:** ⚠️ CONDITIONAL PASS — code + tests complete; live-Supabase run pending human DDL apply
+**Verdict:** ✅ PASS — migrations applied same day, live suite green
+
+## Amendment (2026-07-04, same day)
+
+Human applied migrations `0009-0011`. `pytest tests/jobs/test_retention_integration.py -q` → 3/3 pass (age-trim + denylist protection, second-run idempotency, registry pruning), confirming every scenario below live rather than by inspection alone. No code changes needed for this task.
 
 ## Test summary
 | Suite | Tests | Pass | Fail | Coverage |

@@ -187,11 +187,15 @@ def _insert_registry_row(
 
 
 def _cleanup(client, registry_id: str | None, config_type: str, session_date: date) -> None:
-    if registry_id:
-        client.table("ml_model_registry").delete().eq("id", registry_id).execute()
-    client.table("ml_anomaly_scores").delete().eq("session_date", session_date.isoformat()).eq(
-        "config_type", config_type
-    ).execute()
+    # Each delete independently guarded: one table's cleanup failing must
+    # never mask another's (a real prior bug -- see TASK-018 debug report).
+    try:
+        if registry_id:
+            client.table("ml_model_registry").delete().eq("id", registry_id).execute()
+    finally:
+        client.table("ml_anomaly_scores").delete().eq("session_date", session_date.isoformat()).eq(
+            "config_type", config_type
+        ).execute()
 
 
 def test_normal_spike_hover_clear_sequence(client, toy_model):
@@ -200,25 +204,32 @@ def test_normal_spike_hover_clear_sequence(client, toy_model):
     scorer.start_session(SESSION_DATE)
 
     try:
-        calm = _snapshot_from_features(_row_values(toy_model, toy_model["calm_idx"]), config_type="NON_EXPIRY", ts=BASE_TS)
-        spike = _snapshot_from_features(
-            _row_values(toy_model, toy_model["spike_idx"]), config_type="NON_EXPIRY", ts=BASE_TS + timedelta(minutes=5)
-        )
-        hover = _snapshot_from_features(
-            _row_values(toy_model, toy_model["hover_idx"]), config_type="NON_EXPIRY", ts=BASE_TS + timedelta(minutes=10)
-        )
+        # Each cycle gets its own snapshot instance with a distinct, monotonically
+        # increasing ts -- reusing one snapshot object across cycles would give
+        # tied ts values, and Postgres doesn't guarantee stable ordering for ties
+        # on the verification query below.
+        def _cycle_snapshot(idx_key: str, minute: int) -> SignalSnapshot:
+            return _snapshot_from_features(
+                _row_values(toy_model, toy_model[idx_key]), config_type="NON_EXPIRY", ts=BASE_TS + timedelta(minutes=minute)
+            )
 
-        assert scorer.score_cycle(calm) is None  # normal stream -> zero events
+        calm_1 = _cycle_snapshot("calm_idx", 0)
+        spike_1 = _cycle_snapshot("spike_idx", 5)
+        spike_2 = _cycle_snapshot("spike_idx", 10)
+        hover_1 = _cycle_snapshot("hover_idx", 15)
+        calm_2 = _cycle_snapshot("calm_idx", 20)
 
-        enter_event = scorer.score_cycle(spike)
+        assert scorer.score_cycle(calm_1) is None  # normal stream -> zero events
+
+        enter_event = scorer.score_cycle(spike_1)
         assert enter_event is not None
         assert enter_event.kind == "ANOMALY_ENTER"
         assert enter_event.model_version_id == registry_id or str(enter_event.model_version_id) == registry_id
 
-        assert scorer.score_cycle(spike) is None  # debounce: still anomalous, no re-fire
-        assert scorer.score_cycle(hover) is None  # hover between thresholds -> hold, no flap
+        assert scorer.score_cycle(spike_2) is None  # debounce: still anomalous, no re-fire
+        assert scorer.score_cycle(hover_1) is None  # hover between thresholds -> hold, no flap
 
-        clear_event = scorer.score_cycle(calm)
+        clear_event = scorer.score_cycle(calm_2)
         assert clear_event is not None
         assert clear_event.kind == "ANOMALY_CLEAR"
 

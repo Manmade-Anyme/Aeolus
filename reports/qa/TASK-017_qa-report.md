@@ -1,7 +1,11 @@
 # QA Report — TASK-017
 
 **Date:** 2026-07-04
-**Verdict:** ⚠️ CONDITIONAL PASS — logic verified end-to-end via a fake-client sanity run; live-Supabase suite pending human DDL apply (same gate as TASK-014/016)
+**Verdict:** ✅ PASS — migrations applied same day, live suite green (after a test-only fix)
+
+## Amendment (2026-07-04, same day)
+
+Human applied migrations `0009-0011`. Re-running surfaced the same cleanup-masking bug class as TASK-016 (see `reports/debug/TASK-018_debug-report.md`): each of this file's 5 tests' `finally` blocks ran 2-4 sequential deletes with no independent guarding. It hadn't yet leaked visible data here (this file's rows all live in `ml_feature_store`, which never existed to leak into until the migration landed), but was fixed defensively for consistency using the same `_safe()` wrapper pattern. Re-ran: 5/5 live tests pass. Production code (`trainer.py`) was untouched.
 
 ## Test summary
 | Suite | Tests | Pass | Fail | Coverage |
