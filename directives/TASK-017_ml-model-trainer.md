@@ -19,4 +19,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md` (incl. ML overlay constraints). Batch retrain only — no online learning in v1.
 
-**Status:** DRAFT — Open decisions RESOLVED 2026-07-04: #7 window = **30 trading days** (not spec's 60), #8 flag = top 5% / clear = top 10%, #9 daily EOD retrain.
+**Status:** APPROVED — planning merged via [PR #17](https://github.com/dubeyshantanu2/Aeolus/pull/17) (commit `909de7d`), 2026-07-04 — Open decisions RESOLVED 2026-07-04: #7 window = **30 trading days** (not spec's 60), #8 flag = top 5% / clear = top 10%, #9 daily EOD retrain.

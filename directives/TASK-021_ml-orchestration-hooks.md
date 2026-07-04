@@ -20,4 +20,4 @@
 
 **Global constraints:** see `docs/CONSTRAINTS.md` (incl. ML overlay constraints). Scheduler stays the only clock-aware component — hooks fire on scheduler events, never on wall-clock reads of their own.
 
-**Status:** DRAFT
+**Status:** APPROVED — planning merged via [PR #17](https://github.com/dubeyshantanu2/Aeolus/pull/17) (commit `909de7d`), 2026-07-04

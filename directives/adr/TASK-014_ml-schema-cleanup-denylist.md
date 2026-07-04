@@ -1,7 +1,7 @@
 # Architecture Decision Record — TASK-014
 
 **Directive:** `directives/TASK-014_ml-schema-cleanup-denylist.md`
-**Status:** DRAFT
+**Status:** APPROVED — planning merged via [PR #17](https://github.com/dubeyshantanu2/Aeolus/pull/17) (commit `909de7d`), 2026-07-04
 **Date:** 2026-07-04 (revised same day after OPEN_DECISIONS #6 resolution)
 
 ## Problem
