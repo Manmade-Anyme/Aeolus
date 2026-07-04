@@ -2,19 +2,16 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy project
+# Copy only what's needed for pip install
 COPY pyproject.toml .
-COPY src src/
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -e .
+# Install dependencies (cache layer)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -e .
 
-# Create entrypoint
+# Copy source code
+COPY src/ src/
 COPY main.py .
 
-# Run the scheduler (exits after one session)
+# Run scheduler (exits after one session, then Fly scales to 0)
 CMD ["python", "main.py"]
