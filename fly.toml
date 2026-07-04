@@ -2,16 +2,15 @@ app = 'aeolus'
 primary_region = 'bom'
 
 [build]
-  builder = 'dockerfile'
-
-[env]
-  # SUPABASE_URL, SUPABASE_ANON_KEY, MARKET_DISCORD_WEBHOOK_URL, STATUS_DISCORD_WEBHOOK_URL
-  # must be set as secrets via: flyctl secrets set SUPABASE_URL=...
+  dockerfile = './Dockerfile'
 
 [[services]]
-  processes = ['app']
-  protocol = 'tcp'
   internal_port = 8080
+  processes = ['app']
+
+  [[services.ports]]
+    port = 8080
+    protocol = 'tcp'
 
 [vm]
   memory = '1gb'
