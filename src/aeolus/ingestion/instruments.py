@@ -55,7 +55,16 @@ class InstrumentResolver:
 
     def refresh(self) -> None:
         """Re-pull the scrip master. Call once per session (roll-aware)."""
-        response = requests.get(self._url, timeout=30)
+        # Dhan's CDN 403s bare datacenter requests (e.g. from Fly.io);
+        # browser-like headers are required for the public scrip master
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+            ),
+            "Accept": "text/csv,*/*",
+        }
+        response = requests.get(self._url, headers=headers, timeout=30)
         response.raise_for_status()
         self._df = pd.read_csv(StringIO(response.text), low_memory=False)
 

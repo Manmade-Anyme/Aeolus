@@ -36,11 +36,17 @@ Futures − spot and its drift through the session, as optional secondary positi
 
 AEOLUS will deploy on Fly.io, scaled up/down by an external cron (same pattern as ARES — see Obsidian `Projects/Ares/09_Deployment.md`: cron-job.org calling the Fly Machines API directly, since GitHub Actions cron proved too delayed). Target window: machine up ~9:00 AM IST (gives a real pre-market buffer before the 9:15 open), machine down by ~3:31 PM IST. `Scheduler.run()` (TASK-013) is written to exit cleanly once its session is done specifically so this scale-to-0 pattern works without a separate "stop" trigger, mirroring ARES's `main.py`.
 
-- **Status:** DEFERRED — explicitly not resolved now, by human direction ("this we will discuss when the project is working as expected at last")
-- **TODO (not started):**
-  - [ ] `fly.toml` (no `[http_service]` — background worker, avoids healthcheck failures, per ARES precedent)
-  - [ ] Fly app + region choice (ARES uses `bom`/Mumbai for latency; confirm same for AEOLUS)
-  - [ ] cron-job.org (or equivalent) wired to `api.machines.dev` to scale 0→1 at session start
+- **Status:** IN PROGRESS (2026-07-06) — deployment started; app boots on Fly, blocked only on Dhan data-API resubscription
+- **Done (2026-07-05/06):**
+  - [x] `fly.toml` — app `aeolus`, region `bom` (matching ARES), 1× shared-cpu-1x / 512MB, `[http_service]` removed (background worker)
+  - [x] Fly app + region choice — `bom`, confirmed
+  - [x] Dockerfile fixed: `pip install .` (non-editable) *after* `COPY src/` — the old editable-install-before-copy produced no `aeolus` module mapping (`ModuleNotFoundError` restart loop); `config/` now copied into the image too
+  - [x] `NseCalendar` holidays path made install-safe: `AEOLUS_HOLIDAYS_PATH` env override → repo-relative → `cwd()/config` fallback (site-packages install broke the old file-relative walk)
+  - [x] Secrets deployed via `fly secrets import` (Supabase URL/key + 3 Discord webhooks; market and ML webhooks intentionally the same channel)
+  - [x] Scaled 2→1 machines (duplicate machines would double-post Discord)
+- **TODO (remaining):**
+  - [ ] Dhan data-API subscription renewal (human) — current 403 on scrip master is subscription expiry, not code; verify a full session run after resubscribing
+  - [ ] cron-job.org (or equivalent) wired to `api.machines.dev` to scale 0→1 at session start (~9:00 AM IST up)
   - [ ] Confirm whether a symmetric scale-1→0 cron is still needed as a belt-and-suspenders stop, or whether `Scheduler.run()` exiting is sufficient alone (ARES kept both)
   - [ ] Re-run `scripts/fetch_nse_holidays.py` closer to 2026-11-08 to pick up muhurat-session hours once NSE publishes them (currently `null` in the live API response)
 

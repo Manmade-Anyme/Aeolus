@@ -6,13 +6,30 @@ from NSE's own live holiday-master endpoint -- never fabricated dates.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from datetime import date, time
 from pathlib import Path
 
 DEFAULT_OPEN = time(9, 15)
 DEFAULT_CLOSE = time(15, 30)
-DEFAULT_HOLIDAYS_PATH = Path(__file__).resolve().parent.parent.parent.parent / "config" / "nse_holidays.json"
+
+
+def _default_holidays_path() -> Path:
+    """Resolve config/nse_holidays.json for both repo checkouts and installed
+    packages. Priority: AEOLUS_HOLIDAYS_PATH env var, then the repo-relative
+    location (source tree), then config/ under the current working directory
+    (installed package run from an app root, e.g. /app in the Fly image)."""
+    env = os.getenv("AEOLUS_HOLIDAYS_PATH")
+    if env:
+        return Path(env)
+    repo_relative = Path(__file__).resolve().parent.parent.parent.parent / "config" / "nse_holidays.json"
+    if repo_relative.exists():
+        return repo_relative
+    return Path.cwd() / "config" / "nse_holidays.json"
+
+
+DEFAULT_HOLIDAYS_PATH = _default_holidays_path()
 
 
 @dataclass(frozen=True)
