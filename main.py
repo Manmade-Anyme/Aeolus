@@ -5,6 +5,7 @@ import logging
 import os
 import sys
 
+from aeolus.ml.config import MLTuning
 from aeolus.ml.hooks import MLHooks
 from aeolus.jobs.retention import RetentionJob
 from aeolus.scheduler.scheduler import Scheduler
@@ -28,9 +29,18 @@ def main() -> None:
     logger.info("Starting AEOLUS session")
 
     # Wire ML overlay (optional)
+    # FIX: previously passed ml_webhook_url as supabase_url positional arg
+    # (MLHooks(supabase_url) signature), which would silently use a Discord
+    # webhook URL as the Supabase client endpoint. Now passes supabase_url +
+    # supabase_key properly and routes ml_webhook_url through MLTuning.
     ml_hooks = None
     if ml_webhook_url:
-        ml_hooks = MLHooks(ml_webhook_url, supabase_key, client=None)
+        ml_hooks = MLHooks(
+            supabase_url=supabase_url,
+            supabase_key=supabase_key,
+            tuning=MLTuning(ml_discord_webhook_url=ml_webhook_url),
+            client=None,
+        )
         logger.info("ML overlay enabled")
     else:
         logger.info("ML overlay disabled (no ML_DISCORD_WEBHOOK_URL)")
