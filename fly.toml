@@ -1,31 +1,15 @@
-# fly.toml app configuration file generated for aeolus on 2026-07-05T17:19:38+05:30
+# fly.toml app configuration file for aeolus
 #
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+# AEOLUS is a scheduler-driven batch app: it runs one trading session and
+# exits. No HTTP service is exposed; Fly restart policy / scheduling handles
+# machine lifecycle.
 #
+# See https://fly.io/docs/reference/configuration/ for details.
 
 app = 'aeolus'
 primary_region = 'bom'
 
-[build]
-
-[http_service]
-  internal_port = 8080
-  force_https = true
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
-  min_machines_running = 0
-  processes = ['app']
-
-[[services]]
-  protocol = ''
-  internal_port = 8080
-  processes = ['app']
-
-  [[services.ports]]
-    port = 8080
-
 [[vm]]
-  memory = '1gb'
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 1024
