@@ -10,6 +10,6 @@ app = 'aeolus'
 primary_region = 'bom'
 
 [[vm]]
-  memory = '512mb'
+  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1

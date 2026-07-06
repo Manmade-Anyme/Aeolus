@@ -10,7 +10,7 @@ from datetime import date, datetime, timezone
 from aeolus.ingestion.credentials import CredentialsSource
 from aeolus.ingestion.feed_rest import OptionChainPoller
 from aeolus.ingestion.feed_ws import LiveFeed
-from aeolus.ingestion.instruments import InstrumentResolver
+from aeolus.ingestion.instruments import InstrumentResolver, ScripMasterCache
 from aeolus.ingestion.models import IngestionSnapshot
 from aeolus.ingestion.staleness import StalenessTracker, aggregate_status
 
@@ -18,7 +18,9 @@ from aeolus.ingestion.staleness import StalenessTracker, aggregate_status
 class IngestionService:
     def __init__(self, supabase_url: str, supabase_key: str) -> None:
         self._credentials_source = CredentialsSource(supabase_url, supabase_key)
-        self._instruments = InstrumentResolver()
+        self._instruments = InstrumentResolver(
+            cache=ScripMasterCache(supabase_url, supabase_key)
+        )
         self._staleness = StalenessTracker()
         self._live_feed: LiveFeed | None = None
         self._option_poller: OptionChainPoller | None = None
