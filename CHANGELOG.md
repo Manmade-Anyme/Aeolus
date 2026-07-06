@@ -4,6 +4,9 @@ All notable changes to AEOLUS. Format loosely follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Fixed
+- 2026-07-06 — Prod incident (no session ran at market open): Dhan CloudFront intermittently 403'd the scrip master ~09:17–09:27 IST → crash loop → Fly max-restart (10) → machine dead for the day; after manual restart the fetch succeeded but the full-file pandas parse (~27MB, `low_memory=False`) was OOM-killed on the 512MB VM. Fix in `ingestion/instruments.py`: (1) retry with exponential backoff (4 attempts, 15s base); (2) stream-download + chunked parse restricted to the 7 columns the resolvers use, filtered to NIFTY-relevant rows at parse time; (3) new `ScripMasterCache` — last-good subset persisted to Supabase (`scrip_master_cache`, migration 0012, single row, best-effort) and used as fallback when retries are exhausted; (4) `fly.toml` memory 512mb → 1gb. New tests: `tests/ingestion/test_instruments_resilience.py` (5, mocked). Migration 0012 must be applied to Supabase manually for the fallback to activate.
+
 ### Added
 - 2026-07-03 — Project scaffold: folder structure, pipeline docs (`docs/`), PM directives TASK-001..013, ADR/report templates, project `CLAUDE.md`. No code yet.
 - 2026-07-03 — TASK-001 Supabase schema: 5 migration files (`supabase/migrations/`) for `signal_snapshots`, `state_transitions`, `daily_outlook`, `outcome_labels` + enum types; typed pydantic models (`src/aeolus/storage/models.py`); ADR at `directives/adr/TASK-001_supabase-schema.md`. `system_status`/`market_state` enforced as structurally distinct Postgres enum types. Model-layer tests pass (16/16); DB-level DDL tests written, pending `TEST_DATABASE_URL`.
