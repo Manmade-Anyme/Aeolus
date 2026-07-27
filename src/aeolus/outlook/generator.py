@@ -162,16 +162,28 @@ class OutlookGenerator:
         }
 
     def _load_trailing_histories(self, session_date: date) -> dict[str, list[float]]:
-        rows = cast(
-            "list[dict[str, Any]]",
-            self._client.table(SignalSnapshot.TABLE)
-            .select("session_date, ts, raw_readings")
-            .lt("session_date", session_date.isoformat())
-            .order("ts", desc=True)
-            .limit(MAX_TRAILING_SESSIONS * 20)
-            .execute()
-            .data,
-        )
+        try:
+            rows = cast(
+                "list[dict[str, Any]]",
+                self._client.table("daily_eod_signal_snapshots")
+                .select("session_date, ts, raw_readings")
+                .lt("session_date", session_date.isoformat())
+                .order("session_date", desc=True)
+                .limit(MAX_TRAILING_SESSIONS)
+                .execute()
+                .data,
+            )
+        except Exception:
+            rows = cast(
+                "list[dict[str, Any]]",
+                self._client.table(SignalSnapshot.TABLE)
+                .select("session_date, ts, raw_readings")
+                .lt("session_date", session_date.isoformat())
+                .order("ts", desc=True)
+                .limit(MAX_TRAILING_SESSIONS * 20)
+                .execute()
+                .data,
+            )
 
         last_row_per_date: dict[str, dict[str, Any]] = {}
         for row in rows:

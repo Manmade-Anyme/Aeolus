@@ -91,15 +91,26 @@ class EngineState:
         """
         state = cls()
 
-        prior_rows = (
-            client.table(SignalSnapshot.TABLE)
-            .select("session_date, ts, raw_readings, sub_scores, composite_score, market_state")
-            .lt("session_date", session_date.isoformat())
-            .order("ts", desc=True)
-            .limit(MAX_TRAILING_SESSIONS * 20)
-            .execute()
-            .data
-        )
+        try:
+            prior_rows = (
+                client.table("daily_eod_signal_snapshots")
+                .select("session_date, ts, raw_readings, sub_scores, composite_score, market_state")
+                .lt("session_date", session_date.isoformat())
+                .order("session_date", desc=True)
+                .limit(MAX_TRAILING_SESSIONS)
+                .execute()
+                .data
+            )
+        except Exception:
+            prior_rows = (
+                client.table(SignalSnapshot.TABLE)
+                .select("session_date, ts, raw_readings, sub_scores, composite_score, market_state")
+                .lt("session_date", session_date.isoformat())
+                .order("ts", desc=True)
+                .limit(MAX_TRAILING_SESSIONS * 20)
+                .execute()
+                .data
+            )
         state._seed_cross_session(prior_rows)  # type: ignore[arg-type]
 
         today_rows = (

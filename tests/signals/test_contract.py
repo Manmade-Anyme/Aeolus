@@ -10,8 +10,9 @@ def test_percentile_rank_empty_history():
 
 
 def test_percentile_rank_thin_history_fallback():
-    # Fewer than min_history items should return 0.5 fallback
+    # Fewer than min_history items returns 0.5 neutral fallback
     assert _percentile_rank(100.0, [10.0, 20.0], min_history=3) == 0.5
+    assert _percentile_rank(100.0, [], min_history=1) == 0.5
 
 
 def test_percentile_rank_sufficient_history():
