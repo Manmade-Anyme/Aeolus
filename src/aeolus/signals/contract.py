@@ -18,13 +18,17 @@ sub_score: 0.0-1.0, 1.0 = maximally GO-favorable, 0.0 = maximally NO-GO-favorabl
 MIN_LOOKBACK_SESSIONS = 20
 
 
-def _percentile_rank(value: float, history: list[float]) -> float:
+def _percentile_rank(
+    value: float,
+    history: list[float],
+    min_history: int = 1,
+) -> float:
     """Fraction of history <= value, as a 0.0-1.0 percentile rank.
 
-    Empty history -> 0.5 (no basis for comparison, matches sub_score's own
-    neutral/unknown convention).
+    If history has fewer than min_history items, returns 0.5 (neutral/unknown fallback)
+    so empty history cannot distort sub-scores.
     """
-    if not history:
+    if not history or len(history) < min_history:
         return 0.5
     return sum(1 for h in history if h <= value) / len(history)
 

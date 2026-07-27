@@ -4,6 +4,7 @@ All notable changes to AEOLUS. Format loosely follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+- 2026-07-28 — TASK-008 Lookback Guard & Percentile Rank Audit Fix: `src/aeolus/signals/contract.py`, `config/profiles.py`. Updated `_percentile_rank` lookback guard handling so sparse initial session history does not lock sub-scores (`gex_regime`, `cvd_direction_and_divergence`, `delta_imbalance`) at `1.00`. Widened `spot_distance_from_flip` reference band from `(0.0, 2.0)` to `(0.0, 5.0)` to allow smooth, proportional distance sub-scores. Added test suite in `tests/signals/test_contract.py`.
 - 2026-07-28 — TASK-008 Option Buyer Suitability Gate & Market Regime Classifier: `src/aeolus/explain/regime.py`, `src/aeolus/engine/scorer.py`, `config/profiles.py`, `src/aeolus/output/discord.py`. Added explicit `classify_regime_and_suitability` engine synthesizing calculated signal readings into high-level Market Regimes (e.g. `PASSIVE ABSORPTION / SHORT ACCUMULATION`, `IV CRUSH / THETA BLEED`, `DIRECTIONAL EXPANSION`) and Option Buyer Suitability ratings (`UNSUITABLE 🔴`, `STANDBY 🟡`, `HIGHLY SUITABLE 🟢`). Hard-gated `state_for_score` in `scorer.py` to prevent `GO` signals whenever IV is crushing (`volatility_score < 0.40`) or passive limit absorption is active. Raised `prepare_go` threshold to `0.65` (non-expiry) and `0.68` (expiry) to eliminate razor-thin boundary flip-flopping. Updated Discord formatter to render the Executive Regime Summary & Suitability Ruling at the top of state transition embeds.
 
 ### Fixed
