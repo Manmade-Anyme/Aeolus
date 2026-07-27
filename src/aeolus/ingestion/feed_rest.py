@@ -22,6 +22,7 @@ from dhanhq import DhanContext, dhanhq
 
 from aeolus.ingestion.credentials import DhanCredentials
 from aeolus.ingestion.models import Greeks, OptionStrike
+from aeolus.ingestion.redis_client import DhanRedisClient
 from aeolus.ingestion.staleness import StalenessTracker
 
 UNDERLYING_INDEX_SEGMENT = "IDX_I"
@@ -33,11 +34,13 @@ class OptionChainPoller:
         credentials: DhanCredentials,
         spot_security_id: str,
         staleness: StalenessTracker,
+        hub_url: str | None = None,
     ) -> None:
         context = DhanContext(credentials.client_id, credentials.access_token)
         self._client = dhanhq(context)
         self._spot_security_id = spot_security_id
         self._staleness = staleness
+        self._redis_client = DhanRedisClient(hub_url=hub_url)
         self._last_strike_count = 0
         self._short_read_streak = 0
 
@@ -49,6 +52,21 @@ class OptionChainPoller:
         return self._short_read_streak >= 2
 
     def resolve_nearest_expiry(self) -> date:
+        expiries_str = self._redis_client.get_expiry_list(
+            symbol="NIFTY",
+            underlying_scrip=int(self._spot_security_id),
+            underlying_seg=UNDERLYING_INDEX_SEGMENT,
+        )
+        if expiries_str:
+            expiries = sorted(
+                datetime.strptime(d, "%Y-%m-%d").date() for d in expiries_str
+            )
+            today = datetime.now(timezone.utc).date()
+            upcoming = [d for d in expiries if d >= today]
+            if upcoming:
+                return upcoming[0]
+
+        # Fallback to direct Dhan API if Redis Hub is unavailable
         response = self._client.expiry_list(int(self._spot_security_id), UNDERLYING_INDEX_SEGMENT)
         if response["status"] != "success":
             raise RuntimeError(f"expiry_list failed: {response['remarks']}")
@@ -62,17 +80,26 @@ class OptionChainPoller:
         return upcoming[0]
 
     def poll(self, expiry: date) -> list[OptionStrike]:
-        response = self._client.option_chain(
-            int(self._spot_security_id), UNDERLYING_INDEX_SEGMENT, expiry.isoformat()
+        chain = self._redis_client.get_option_chain(
+            symbol="NIFTY",
+            expiry=expiry.isoformat(),
+            underlying_scrip=int(self._spot_security_id),
+            underlying_seg=UNDERLYING_INDEX_SEGMENT,
         )
-        if response["status"] != "success":
-            # Connectivity/API failure -- do not touch the heartbeat, let it
-            # age into STALE/DISCONNECTED via elapsed time instead.
-            return []
+
+        if chain is None:
+            # Fallback to direct Dhan API if Redis Hub is unavailable
+            response = self._client.option_chain(
+                int(self._spot_security_id), UNDERLYING_INDEX_SEGMENT, expiry.isoformat()
+            )
+            if response.get("status") != "success":
+                # Connectivity/API failure -- do not touch the heartbeat, let it
+                # age into STALE/DISCONNECTED via elapsed time instead.
+                return []
+            chain = response["data"]["data"]["oc"]
 
         self._staleness.touch("option_chain", datetime.now(timezone.utc))
 
-        chain = response["data"]["data"]["oc"]
         strikes = [_parse_strike(strike_str, legs) for strike_str, legs in chain.items()]
 
         if self._last_strike_count and len(strikes) < self._last_strike_count:
