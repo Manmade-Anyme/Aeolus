@@ -41,7 +41,18 @@ class DhanRedisClient:
                 timeout=10.0,
             )
             if resp.status_code == 200 and isinstance(resp.json(), list):
-                return resp.json()
+                raw_list = resp.json()
+                valid_expiries = []
+                for d in raw_list:
+                    if isinstance(d, str):
+                        try:
+                            from datetime import datetime
+                            datetime.strptime(d, "%Y-%m-%d")
+                            valid_expiries.append(d)
+                        except ValueError:
+                            continue
+                if valid_expiries:
+                    return valid_expiries
         except Exception as exc:
             logger.warning("DhanRedisClient get_expiry_list error: %s", exc)
         return None

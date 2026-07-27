@@ -60,3 +60,25 @@ def test_classify_regime_directional_expansion() -> None:
     assert "HIGHLY SUITABLE" in suitability
     assert emoji == "🟢"
     assert "Strong directional price momentum" in explanation
+
+
+def test_classify_regime_with_expiry_thresholds() -> None:
+    from config.tuning import StateThresholds
+
+    expiry_thresholds = StateThresholds(no_go_prepare=0.45, prepare_go=0.68)
+    raw_readings = {
+        "order_flow": {
+            "cvd_direction_and_divergence": {"sub_score": 0.75},
+            "delta_imbalance_and_absorption": {"sub_score": 0.75},
+        },
+        "volatility": {"iv_rv_spread": {"sub_score": 0.60}},
+    }
+    sub_scores = {"volatility": 0.60, "gamma": 0.75, "order_flow": 0.75}
+
+    # Composite 0.66 is below 0.68 (expiry prepare_go), should yield PREPARE / STANDBY
+    regime, suitability, emoji, explanation = classify_regime_and_suitability(
+        raw_readings, sub_scores, 0.66, thresholds=expiry_thresholds
+    )
+    assert regime == "PRE-BREAKOUT ACCUMULATION / MONITORING"
+    assert "STANDBY" in suitability
+    assert emoji == "🟡"

@@ -343,11 +343,15 @@ class Engine:
         delta_sub_score = order_flow_results.get("delta_imbalance_and_absorption", (None, None, 0.5, ""))[2]
         is_passive_absorption = cvd_sub_score < 0.40 or delta_sub_score < 0.40
 
+        iv_rv_sub_score = volatility_results.get("iv_rv_spread", (None, None, 0.5, ""))[2]
+        is_iv_crush = category_scores.get("volatility", 0.5) < 0.40 or iv_rv_sub_score < 0.35
+
         proposed_state = state_for_score(
             composite,
             config.thresholds,
             volatility_score=category_scores.get("volatility"),
             is_passive_absorption=is_passive_absorption,
+            is_iv_crush=is_iv_crush,
         )
         pending_state, pending_streak, confirmed_state, flipped = apply_hysteresis(
             proposed_state,
@@ -356,6 +360,14 @@ class Engine:
             state.confirmed_state,
             config.confirmation_cycles,
         )
+
+        # Hard option-buyer gate: If GO is active when hard gate triggers (IV crush / passive absorption),
+        # demote confirmed_state immediately to PREPARE without waiting for hysteresis confirmation cycles.
+        if (is_passive_absorption or is_iv_crush) and state.confirmed_state == "GO":
+            confirmed_state = "PREPARE"
+            pending_state = "PREPARE"
+            pending_streak = config.confirmation_cycles
+            flipped = True
         previous_confirmed_state = state.confirmed_state
         state.pending_state = pending_state
         state.pending_streak = pending_streak

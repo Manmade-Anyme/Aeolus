@@ -44,13 +44,14 @@ def state_for_score(
     thresholds: StateThresholds,
     volatility_score: float | None = None,
     is_passive_absorption: bool = False,
+    is_iv_crush: bool = False,
 ) -> MarketState:
     if score < thresholds.no_go_prepare:
         return "NO_GO"
     
-    # Hard option-buyer gate: If IV is crushing (<0.40) or passive absorption is active,
+    # Hard option-buyer gate: If IV is crushing or passive absorption is active,
     # never declare GO (option buying is negative EV).
-    if (volatility_score is not None and volatility_score < 0.40) or is_passive_absorption:
+    if (volatility_score is not None and volatility_score < 0.40) or is_passive_absorption or is_iv_crush:
         return "PREPARE"
 
     if score >= thresholds.prepare_go:

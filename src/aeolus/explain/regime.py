@@ -9,19 +9,23 @@ from __future__ import annotations
 
 from typing import Any
 
+from config.tuning import StateThresholds
+
 
 def classify_regime_and_suitability(
     raw_readings: dict[str, dict[str, Any]],
     sub_scores: dict[str, float],
     composite_score: float,
+    thresholds: StateThresholds | None = None,
 ) -> tuple[str, str, str, str]:
     """Returns (regime_name, suitability_status, suitability_emoji, detailed_explanation).
 
-    Deterministically derived from actual calculated signal values.
+    Deterministically derived from actual calculated signal values and active profile thresholds.
     """
+    no_go_cutoff = thresholds.no_go_prepare if thresholds else 0.40
+    go_cutoff = thresholds.prepare_go if thresholds else 0.65
+
     vol_score = sub_scores.get("volatility", 0.5)
-    gamma_score = sub_scores.get("gamma", 0.5)
-    of_score = sub_scores.get("order_flow", 0.5)
 
     of_readings = raw_readings.get("order_flow", {})
     cvd_entry = of_readings.get("cvd_direction_and_divergence", {})
@@ -60,7 +64,7 @@ def classify_regime_and_suitability(
         return regime_name, suitability_status, suitability_emoji, explanation
 
     # 3. Pinned Range / Low Volatility
-    if composite_score < 0.40:
+    if composite_score < no_go_cutoff:
         regime_name = "RANGE COMPRESSION / GAMMA PINNING"
         suitability_status = "UNSUITABLE (Range Bound / Pinned)"
         suitability_emoji = "🔴"
@@ -71,7 +75,7 @@ def classify_regime_and_suitability(
         return regime_name, suitability_status, suitability_emoji, explanation
 
     # 4. Directional Expansion (GO)
-    if composite_score >= 0.65 and vol_score >= 0.45:
+    if composite_score >= go_cutoff and vol_score >= 0.45:
         regime_name = "DIRECTIONAL EXPANSION / VOLATILITY SUPPORT"
         suitability_status = "HIGHLY SUITABLE (Directional Momentum & Vol Expansion)"
         suitability_emoji = "🟢"

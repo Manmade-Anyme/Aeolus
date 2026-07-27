@@ -255,9 +255,11 @@ class DiscordDispatcher:
         outlook: DailyOutlook | None,
     ) -> None:
         from aeolus.explain.regime import classify_regime_and_suitability
+        from config.profiles import EXPIRY_CONFIG, NON_EXPIRY_CONFIG
 
+        config = EXPIRY_CONFIG if snapshot.config_type == "EXPIRY" else NON_EXPIRY_CONFIG
         regime_name, suitability_status, suitability_emoji, explanation = classify_regime_and_suitability(
-            snapshot.raw_readings, snapshot.sub_scores, snapshot.composite_score
+            snapshot.raw_readings, snapshot.sub_scores, snapshot.composite_score, thresholds=config.thresholds
         )
 
         executive_field = {
