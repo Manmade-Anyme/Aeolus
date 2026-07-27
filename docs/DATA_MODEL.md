@@ -1,6 +1,6 @@
 # AEOLUS — Data Model (Supabase / Postgres)
 
-Conceptual schema from Spec §9. Concrete DDL: `supabase/migrations/0001..0006_*.sql` (ADR: `directives/adr/TASK-001_supabase-schema.md`). Typed row models: `src/aeolus/storage/models.py`. Live data and backtest data are the **same append-only log** — no separate synthetic backtest table.
+Conceptual schema from Spec §9. Concrete DDL: `supabase/schema.sql` (migrations: `supabase/migrations/0001..0012_*.sql`, ADR: `directives/adr/TASK-001_supabase-schema.md`). Typed row models: `src/aeolus/storage/models.py`. Live data and backtest data are the **same append-only log** — no separate synthetic backtest table.
 
 **Access pattern:** same as the Ares project sharing this Supabase instance — `supabase-py` client + anon key (`SUPABASE_URL`/`SUPABASE_KEY` in `.env`) at runtime, RLS disabled on all 4 tables, DDL applied by hand via the Supabase Dashboard SQL Editor (anon key cannot run DDL; no direct Postgres connection is configured for this project). See ADR Amendment for why this differs from the original CLI-based plan.
 

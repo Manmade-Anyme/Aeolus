@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
+import os
+
 from aeolus.ingestion.credentials import CredentialsSource
 from aeolus.ingestion.feed_rest import OptionChainPoller
 from aeolus.ingestion.feed_ws import LiveFeed
@@ -16,7 +18,10 @@ from aeolus.ingestion.staleness import StalenessTracker, aggregate_status
 
 
 class IngestionService:
-    def __init__(self, supabase_url: str, supabase_key: str) -> None:
+    def __init__(
+        self, supabase_url: str, supabase_key: str, hub_url: str | None = None
+    ) -> None:
+        self._hub_url = hub_url or os.getenv("DHAN_HUB_URL")
         self._credentials_source = CredentialsSource(supabase_url, supabase_key)
         self._instruments = InstrumentResolver(
             cache=ScripMasterCache(supabase_url, supabase_key)
@@ -44,7 +49,9 @@ class IngestionService:
         )
         self._live_feed.start()
 
-        self._option_poller = OptionChainPoller(credentials, spot_id, self._staleness)
+        self._option_poller = OptionChainPoller(
+            credentials, spot_id, self._staleness, hub_url=self._hub_url
+        )
         self._option_expiry = self._option_poller.resolve_nearest_expiry()
 
     def latest(self) -> IngestionSnapshot:

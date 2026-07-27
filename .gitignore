@@ -27,3 +27,4 @@ SEARCH/
 
 # Local claude settings
 .claude/settings.local.json
+Screenshot*.png
