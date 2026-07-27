@@ -1,5 +1,5 @@
 -- AEOLUS — Complete Consolidated Supabase Database Schema
--- Includes all migrations (0001..0012) and the shared api_keys table.
+-- Includes all migrations (0001..0013) and the shared api_keys table.
 -- Can be executed all at once in the Supabase SQL Editor.
 
 -- ============================================================================
@@ -190,3 +190,19 @@ CREATE TABLE IF NOT EXISTS ml_anomaly_scores (
 
 CREATE INDEX IF NOT EXISTS idx_ml_anomaly_scores_ts ON ml_anomaly_scores (ts);
 CREATE INDEX IF NOT EXISTS idx_ml_anomaly_scores_config_type ON ml_anomaly_scores (config_type);
+
+-- ============================================================================
+-- 4. VIEWS
+-- ============================================================================
+
+-- daily_eod_signal_snapshots — returns the chronologically final (EOD) snapshot for each distinct session_date
+CREATE OR REPLACE VIEW daily_eod_signal_snapshots AS
+SELECT DISTINCT ON (session_date)
+    session_date,
+    ts,
+    raw_readings,
+    sub_scores,
+    composite_score,
+    market_state
+FROM signal_snapshots
+ORDER BY session_date DESC, ts DESC;
