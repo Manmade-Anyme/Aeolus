@@ -338,7 +338,17 @@ class Engine:
             "context": category_score([r[2] for r in context_results.values()]),
         }
         composite = composite_score(category_scores, config.category_weights)
-        proposed_state = state_for_score(composite, config.thresholds)
+
+        cvd_sub_score = order_flow_results.get("cvd_direction_and_divergence", (None, None, 0.5, ""))[2]
+        delta_sub_score = order_flow_results.get("delta_imbalance_and_absorption", (None, None, 0.5, ""))[2]
+        is_passive_absorption = cvd_sub_score < 0.40 or delta_sub_score < 0.40
+
+        proposed_state = state_for_score(
+            composite,
+            config.thresholds,
+            volatility_score=category_scores.get("volatility"),
+            is_passive_absorption=is_passive_absorption,
+        )
         pending_state, pending_streak, confirmed_state, flipped = apply_hysteresis(
             proposed_state,
             state.pending_state,

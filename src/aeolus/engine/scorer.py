@@ -39,9 +39,20 @@ def composite_score(category_scores: dict[str, float], weights: Any) -> float:
     return sum(weight_map[name] * category_scores[name] for name in CATEGORY_NAMES)
 
 
-def state_for_score(score: float, thresholds: StateThresholds) -> MarketState:
+def state_for_score(
+    score: float,
+    thresholds: StateThresholds,
+    volatility_score: float | None = None,
+    is_passive_absorption: bool = False,
+) -> MarketState:
     if score < thresholds.no_go_prepare:
         return "NO_GO"
+    
+    # Hard option-buyer gate: If IV is crushing (<0.40) or passive absorption is active,
+    # never declare GO (option buying is negative EV).
+    if (volatility_score is not None and volatility_score < 0.40) or is_passive_absorption:
+        return "PREPARE"
+
     if score >= thresholds.prepare_go:
         return "GO"
     return "PREPARE"

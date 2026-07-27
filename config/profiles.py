@@ -46,7 +46,7 @@ NON_EXPIRY_CONFIG = EngineConfig(
         volatility=0.25, gamma=0.2, oi_structure=0.2, order_flow=0.2, context=0.15
     ),
     reference_bands=_NON_EXPIRY_REFERENCE_BANDS,
-    thresholds=StateThresholds(no_go_prepare=0.40, prepare_go=0.60),
+    thresholds=StateThresholds(no_go_prepare=0.40, prepare_go=0.65),
     confirmation_cycles=3,
     min_total_oi=1000,
     volume_participation_pct=0.10,
@@ -66,7 +66,7 @@ EXPIRY_CONFIG = EngineConfig(
         volatility=0.15, gamma=0.30, oi_structure=0.30, order_flow=0.15, context=0.10
     ),
     reference_bands=_EXPIRY_REFERENCE_BANDS,
-    thresholds=StateThresholds(no_go_prepare=0.45, prepare_go=0.65),
+    thresholds=StateThresholds(no_go_prepare=0.45, prepare_go=0.68),
     confirmation_cycles=3,
     min_total_oi=1000,
     volume_participation_pct=0.10,

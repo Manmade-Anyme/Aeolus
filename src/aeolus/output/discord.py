@@ -254,7 +254,22 @@ class DiscordDispatcher:
         snapshot: SignalSnapshot,
         outlook: DailyOutlook | None,
     ) -> None:
-        fields = _category_breakdown_fields(snapshot)
+        from aeolus.explain.regime import classify_regime_and_suitability
+
+        regime_name, suitability_status, suitability_emoji, explanation = classify_regime_and_suitability(
+            snapshot.raw_readings, snapshot.sub_scores, snapshot.composite_score
+        )
+
+        executive_field = {
+            "name": f"📊 MARKET REGIME: {regime_name}",
+            "value": (
+                f"**Option Buyer Suitability:** {suitability_emoji} **{suitability_status}**\n\n"
+                f"**Executive Summary:** {explanation}"
+            ),
+            "inline": False,
+        }
+
+        fields = [executive_field] + _category_breakdown_fields(snapshot)
         fields.append(
             {
                 "name": "vs Morning Outlook",
