@@ -6,6 +6,7 @@ TASK-008's EngineState -- a smaller, dedicated query, see ADR Decision §2.
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 from typing import Any, cast
 
@@ -22,7 +23,14 @@ from .archetype import primary_and_secondary, score_archetypes
 
 from config.profiles import EXPIRY_CONFIG, NON_EXPIRY_CONFIG
 
-MAX_TRAILING_SESSIONS = 20
+logger = logging.getLogger("aeolus.outlook.generator")
+
+# Matches EngineState.MAX_TRAILING_SESSIONS. Previously 20, which sat exactly
+# on iv_percentile_rank's MIN_LOOKBACK_SESSIONS floor: a single seeded session
+# missing `current_iv` in its carry left 19 samples and pinned the outlook's
+# IV percentile to its "no data" 0.5 branch. It also meant the outlook and the
+# engine ranked the same readings against different-length windows.
+MAX_TRAILING_SESSIONS = 60
 
 
 class OutlookGenerator:
@@ -165,7 +173,7 @@ class OutlookGenerator:
         try:
             rows = cast(
                 "list[dict[str, Any]]",
-                self._client.table("daily_eod_signal_snapshots")
+                self._client.table(SignalSnapshot.EOD_VIEW)
                 .select("session_date, ts, raw_readings")
                 .lt("session_date", session_date.isoformat())
                 .order("session_date", desc=True)
@@ -174,11 +182,21 @@ class OutlookGenerator:
                 .data,
             )
         except Exception:
+            # Same degraded-but-safe fallback as EngineState.load() -- see the
+            # comment there. Logged at ERROR: it means migration 0013 is missing.
+            logger.exception(
+                "Seeding trailing histories from %s failed; falling back to %s. "
+                "The outlook will run on single-session history until "
+                "migration 0013 is applied.",
+                SignalSnapshot.EOD_VIEW,
+                SignalSnapshot.TABLE,
+            )
             rows = cast(
                 "list[dict[str, Any]]",
                 self._client.table(SignalSnapshot.TABLE)
                 .select("session_date, ts, raw_readings")
                 .lt("session_date", session_date.isoformat())
+                .order("session_date", desc=True)
                 .order("ts", desc=True)
                 .limit(MAX_TRAILING_SESSIONS * 20)
                 .execute()

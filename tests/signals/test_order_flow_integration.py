@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import pytest
 
 from aeolus.ingestion.models import IngestionSnapshot
+from aeolus.signals.contract import MIN_PERCENTILE_HISTORY
 from aeolus.signals.order_flow import (
     _near_extreme,
     _tick_classify,
@@ -179,7 +180,8 @@ def test_absorption_mid_range_weaker_baseline_lean():
         day_high=24600.0,
         day_low=24400.0,
     )
-    raw_value, band, sub_score, _ = delta_imbalance_and_absorption(current, [0.2], 0.1, BAND)
+    history = [0.2] * MIN_PERCENTILE_HISTORY  # clears the guard; 0.2 <= 0.4 still ranks 1.0
+    raw_value, band, sub_score, _ = delta_imbalance_and_absorption(current, history, 0.1, BAND)
     assert raw_value == pytest.approx(0.4)
     assert band == BAND
     # magnitude_pct = 1.0 (0.2 <= 0.4), capped baseline lean: 0.5 + 0.25*1.0

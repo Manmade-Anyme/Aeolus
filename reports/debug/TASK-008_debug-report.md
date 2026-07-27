@@ -37,3 +37,81 @@
 - [x] Polarity — inherited verbatim from TASK-003..007, no new polarity calls introduced by aggregation/hysteresis
 - [x] Hysteresis/debounce — N-cycle confirmation, verified to provably prevent flapping at an oscillating threshold (`test_hysteresis_oscillating_at_threshold_never_flips`, 20 alternating cycles, zero flips) and to confirm correctly after N agreeing cycles (both unit-tested and exercised live end-to-end in `test_hysteresis_flip_writes_state_transition`)
 - [x] `system_status` never mapped into `market_state` — passed through verbatim in every written row, never read by `state_for_score`/`apply_hysteresis`
+
+---
+
+## Post-merge fix — 2026-07-27: trailing-history seeding & percentile saturation
+
+**Symptom (live session).** `gex_regime`, `cvd_direction_and_divergence` and
+`delta_imbalance_and_absorption` sat locked at sub-score `1.00`. The pre-market
+outlook simultaneously reported `IV Percentile Rank: no data`,
+`Prior Day Profile: no data` and `Straddle Level vs History: 1.00`.
+
+**Root cause.** Two independent defects compounding, both in this task's code:
+
+1. **The seeding query could only ever see one session.** `EngineState.load()`
+   read `signal_snapshots` with `.order("ts", desc=True).limit(MAX_TRAILING_SESSIONS * 20)`.
+   The `* 20` encodes an assumption of ~20 rows per session. The engine actually
+   writes one row per cycle at `CYCLE_INTERVAL_SECONDS = 5.0` over 09:15–15:30 —
+   **~4,500 rows per session**. Every row in the window therefore came from the
+   single most recent prior date, and `_seed_cross_session`'s dedupe-by-date
+   resolved to exactly one distinct `session_date`. Every cross-session trailing
+   history was permanently one element long, regardless of how many months of
+   data accumulated. `OutlookGenerator._load_trailing_histories()` had the same
+   bug at `limit(400)` (~9 minutes of cycles).
+
+2. **A 1-element percentile is degenerate, not merely noisy.**
+   `_percentile_rank(value, [h])` returns `1.0` if `h <= value` else `0.0` —
+   never anything between. The three affected signals all have the shape
+   `sub_score = 0.5 + 0.5 * magnitude_pct`, so a saturated `magnitude_pct` maps
+   straight to `1.00`. The system reported maximum confidence from the smallest
+   possible sample.
+
+Defect 1 explains why the histories were short. Defect 2 explains why that
+surfaced as a confident wrong answer rather than a neutral one. Both needed
+fixing: the view alone leaves the saturation trap in place for any future
+seeding regression, and the guard alone leaves the engine blind to 59 of its
+60 sessions.
+
+**Why it was not caught earlier.** This report's own QA gap list flagged it:
+*"No test exercises `EngineState.load()` against more than 2 prior days of
+history (a real 60-session trailing window)."* Every fixture in the signal
+suites used 1–5 element histories, which is precisely the regime where the
+degenerate behaviour is invisible — several tests were passing *because* of it
+and had to be widened to realistic windows as part of this fix.
+
+**Fix.**
+
+| # | Change | File |
+|---|---|---|
+| 1 | `daily_eod_signal_snapshots` view — `DISTINCT ON (session_date)`, `security_invoker = on`, plus a `(session_date DESC, ts DESC)` index so the `DISTINCT ON` walks an index instead of sorting the full table | `supabase/migrations/0013_*.sql`, `supabase/schema.sql` |
+| 2 | Seed from `SignalSnapshot.EOD_VIEW` (new constant, documented at the model so the raw table is not reached for by mistake) | `storage/models.py`, `engine/state.py`, `outlook/generator.py` |
+| 3 | `_percentile_rank` guards on `MIN_PERCENTILE_HISTORY = 10` **by default** — safe-by-default rather than opt-in, so a new call site cannot reintroduce the failure by omission | `signals/contract.py` |
+| 4 | Fallback path logs at ERROR instead of silently reinstating the broken query; degraded mode is now safe because of (3) rather than by accident | `engine/state.py`, `outlook/generator.py` |
+| 5 | `OutlookGenerator.MAX_TRAILING_SESSIONS` 20 → 60, matching the engine and clearing `iv_percentile_rank`'s 20-session floor with margin | `outlook/generator.py` |
+
+**Why `MIN_PERCENTILE_HISTORY = 10` and not `MIN_LOOKBACK_SESSIONS = 20`.**
+Several callers rank against *derived* series that are structurally shorter than
+the session count: `vix_level_and_roc`'s `roc_history` is N−1 diffs, and
+`iv_rv_spread`'s rising/falling magnitude histories split those N−1 diffs across
+two lists (~N/2 each). Gating those at 20 would pin them to `0.5` permanently —
+trading stuck-at-1.00 for stuck-at-0.5, which is quieter but no more informative.
+10 is reachable inside the 60-session seed while still too large to saturate.
+
+## Issues
+
+| # | Severity | Description | File:Line | Status |
+|---|---|---|---|---|
+| 1 | High | Trailing-history seed window covered one `session_date`, never more | `engine/state.py:94`, `outlook/generator.py:165` | Fixed |
+| 2 | High | `_percentile_rank` saturated to 0.0/1.0 on degenerate samples | `signals/contract.py:21` | Fixed |
+| 3 | Medium | View read failure silently fell back to the known-broken query | `engine/state.py:104`, `outlook/generator.py:176` | Fixed |
+| 4 | Low | Outlook's 20-session window sat exactly on `MIN_LOOKBACK_SESSIONS` | `outlook/generator.py:25` | Fixed |
+| 5 | Low | View lacked a supporting index and `security_invoker` | `supabase/migrations/0013_*.sql` | Fixed |
+
+## Constraint audit
+
+- [x] **No per-signal veto** — unchanged. The guard alters a sub-score's *value*, never routes around the composite. A guarded signal contributes `0.5` at its configured weight like any other neutral reading.
+- [x] **No clock-time branching** — no time reads added; the seeding queries take a caller-supplied `session_date`, as before.
+- [x] **Deterministic reason strings** — `template_reason` untouched; reason strings remain a pure function of `(raw_value, reference_band, sub_score)`.
+- [x] **Polarity** — unchanged. The guard returns the neutral `0.5` midpoint, which is directionless by construction and cannot bias GO or NO-GO.
+- [x] **`system_status` vs `market_state`** — the fallback logs and degrades signals to neutral; it never writes a `market_state`, so a storage fault still cannot masquerade as NO-GO.
