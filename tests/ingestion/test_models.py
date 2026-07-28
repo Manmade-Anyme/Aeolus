@@ -81,3 +81,50 @@ def test_snapshot_tolerates_fully_missing_data_as_none_not_defaults():
     assert snapshot.option_chain == []
     assert snapshot.volume is None
     assert snapshot.day_high is None
+
+
+def test_option_strike_has_valid_greeks_predicate():
+    valid_strike = OptionStrike(
+        strike=24500,
+        call_oi=1000,
+        put_oi=1200,
+        call_iv=14.2,
+        put_iv=14.5,
+        call_greeks=Greeks(delta=0.5, gamma=0.01, theta=-2.0, vega=1.2),
+        put_greeks=Greeks(delta=-0.5, gamma=0.01, theta=-2.0, vega=1.2),
+    )
+    assert valid_strike.has_valid_greeks is True
+
+    zero_oi_strike = OptionStrike(
+        strike=24500,
+        call_oi=0,
+        put_oi=0,
+        call_iv=0.0,
+        put_iv=0.0,
+        call_greeks=Greeks(delta=0.0, gamma=0.0, theta=0.0, vega=0.0),
+        put_greeks=Greeks(delta=0.0, gamma=0.0, theta=0.0, vega=0.0),
+    )
+    assert zero_oi_strike.has_valid_greeks is True
+
+    zero_call_gamma_with_oi = OptionStrike(
+        strike=23000,
+        call_oi=121615,
+        put_oi=0,
+        call_iv=0.0,
+        put_iv=0.0,
+        call_greeks=Greeks(delta=0.0, gamma=0.0, theta=0.0, vega=0.0),
+        put_greeks=Greeks(delta=0.0, gamma=0.0, theta=0.0, vega=0.0),
+    )
+    assert zero_call_gamma_with_oi.has_valid_greeks is False
+
+    zero_put_gamma_with_oi = OptionStrike(
+        strike=23000,
+        call_oi=0,
+        put_oi=50000,
+        call_iv=0.0,
+        put_iv=0.0,
+        call_greeks=Greeks(delta=0.0, gamma=0.0, theta=0.0, vega=0.0),
+        put_greeks=Greeks(delta=0.0, gamma=0.0, theta=0.0, vega=0.0),
+    )
+    assert zero_put_gamma_with_oi.has_valid_greeks is False
+

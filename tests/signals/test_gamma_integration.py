@@ -180,3 +180,23 @@ def test_no_function_takes_a_clock_or_datetime_argument():
             assert "time" not in name.lower() and "clock" not in name.lower(), (
                 f"{fn.__name__} takes {name!r} — signals must never branch on wall-clock time"
             )
+
+
+def test_net_gamma_by_strike_excludes_zero_gamma_high_oi_strike_and_logs_warning(caplog):
+    # Strike 23000 has 121,615 call OI but zero call gamma (Dhan illiquid strike artifact)
+    zero_gamma_high_oi_strike = _strike(23000, 121615, 0.0, 0, 0.0)
+    valid_strike_1 = _strike(24400, 1000, 0.02, 500, 0.01)
+    valid_strike_2 = _strike(24500, 500, 0.01, 1000, 0.02)
+
+    chain = [zero_gamma_high_oi_strike, valid_strike_1, valid_strike_2]
+
+    with caplog.at_level("WARNING"):
+        pairs = _net_gamma_by_strike(chain)
+
+    # 23000 should be excluded from pairs
+    assert [strike for strike, _ in pairs] == [24400, 24500]
+    assert len(pairs) == 2
+
+    # Warning log should be produced with excluded count
+    assert "Excluded 1 strike(s) with non-zero OI but zeroed gamma" in caplog.text
+

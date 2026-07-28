@@ -6,10 +6,14 @@ IngestionSnapshot. Polarity: GO = favorable for directional option buying.
 
 from __future__ import annotations
 
+import logging
+
 from aeolus.explain.reason import template_reason
 from aeolus.ingestion.models import OptionStrike
 
 from .contract import SignalResult, _clamp01, _percentile_rank
+
+logger = logging.getLogger(__name__)
 
 
 def _net_gamma_by_strike(option_chain: list[OptionStrike]) -> list[tuple[float, float]]:
@@ -17,14 +21,30 @@ def _net_gamma_by_strike(option_chain: list[OptionStrike]) -> list[tuple[float, 
 
     net_gamma_at_strike = call_gamma * call_oi - put_gamma * put_oi. Dealer is
     long gamma on calls sold to them, short gamma on puts sold to them.
+    Strikes with non-zero OI but zeroed gamma are excluded to avoid under-counting GEX.
     """
+    valid_strikes: list[OptionStrike] = []
+    excluded_count = 0
+    for s in option_chain:
+        if s.has_valid_greeks:
+            valid_strikes.append(s)
+        else:
+            excluded_count += 1
+
+    if excluded_count > 0:
+        logger.warning(
+            "Excluded %d strike(s) with non-zero OI but zeroed gamma from GEX calculation",
+            excluded_count,
+        )
+
     return sorted(
         (
             (s.strike, s.call_greeks.gamma * s.call_oi - s.put_greeks.gamma * s.put_oi)
-            for s in option_chain
+            for s in valid_strikes
         ),
         key=lambda pair: pair[0],
     )
+
 
 
 def _flip_level(net_gamma_by_strike: list[tuple[float, float]]) -> float | None:
