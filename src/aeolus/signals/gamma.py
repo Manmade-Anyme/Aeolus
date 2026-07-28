@@ -21,29 +21,35 @@ def _net_gamma_by_strike(option_chain: list[OptionStrike]) -> list[tuple[float, 
 
     net_gamma_at_strike = call_gamma * call_oi - put_gamma * put_oi. Dealer is
     long gamma on calls sold to them, short gamma on puts sold to them.
-    Strikes with non-zero OI but zeroed gamma are excluded to avoid under-counting GEX.
+    Legs with non-zero OI but zeroed gamma are excluded (contribute 0) to avoid
+    under-counting GEX, and a warning is logged.
     """
-    valid_strikes: list[OptionStrike] = []
-    excluded_count = 0
-    for s in option_chain:
-        if s.has_valid_greeks:
-            valid_strikes.append(s)
-        else:
-            excluded_count += 1
+    excluded_legs = 0
+    pairs: list[tuple[float, float]] = []
 
-    if excluded_count > 0:
+    for s in option_chain:
+        call_valid = s.has_valid_call_greeks
+        put_valid = s.has_valid_put_greeks
+
+        if not call_valid:
+            excluded_legs += 1
+        if not put_valid:
+            excluded_legs += 1
+
+        call_contrib = s.call_greeks.gamma * s.call_oi if call_valid else 0.0
+        put_contrib = s.put_greeks.gamma * s.put_oi if put_valid else 0.0
+        net_gamma = call_contrib - put_contrib
+
+        if net_gamma != 0.0:
+            pairs.append((s.strike, net_gamma))
+
+    if excluded_legs > 0:
         logger.warning(
-            "Excluded %d strike(s) with non-zero OI but zeroed gamma from GEX calculation",
-            excluded_count,
+            "Excluded %d leg(s) with non-zero OI but zeroed gamma from GEX calculation",
+            excluded_legs,
         )
 
-    return sorted(
-        (
-            (s.strike, s.call_greeks.gamma * s.call_oi - s.put_greeks.gamma * s.put_oi)
-            for s in valid_strikes
-        ),
-        key=lambda pair: pair[0],
-    )
+    return sorted(pairs, key=lambda pair: pair[0])
 
 
 
@@ -101,6 +107,10 @@ def gex_regime(
         return (None, reference_band, 0.5, reason)
 
     net_gamma_by_strike = _net_gamma_by_strike(option_chain)
+    if not net_gamma_by_strike:
+        reason = template_reason(name, None, reference_band, 0.5)
+        return (None, reference_band, 0.5, reason)
+
     net_gamma_sum = sum(ng for _, ng in net_gamma_by_strike)
     raw_value = net_gamma_sum * spot_ltp**2 * lot_size * 0.01
 
@@ -109,6 +119,7 @@ def gex_regime(
 
     reason = template_reason(name, raw_value, reference_band, sub_score)
     return (raw_value, reference_band, sub_score, reason)
+
 
 
 def spot_distance_from_flip(

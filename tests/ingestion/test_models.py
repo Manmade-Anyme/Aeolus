@@ -116,6 +116,8 @@ def test_option_strike_has_valid_greeks_predicate():
         put_greeks=Greeks(delta=0.0, gamma=0.0, theta=0.0, vega=0.0),
     )
     assert zero_call_gamma_with_oi.has_valid_greeks is False
+    assert zero_call_gamma_with_oi.has_valid_call_greeks is False
+    assert zero_call_gamma_with_oi.has_valid_put_greeks is True
 
     zero_put_gamma_with_oi = OptionStrike(
         strike=23000,
@@ -127,4 +129,35 @@ def test_option_strike_has_valid_greeks_predicate():
         put_greeks=Greeks(delta=0.0, gamma=0.0, theta=0.0, vega=0.0),
     )
     assert zero_put_gamma_with_oi.has_valid_greeks is False
+    assert zero_put_gamma_with_oi.has_valid_call_greeks is True
+    assert zero_put_gamma_with_oi.has_valid_put_greeks is False
+
+    # Mixed-leg: one leg invalid (call zeroed), opposite leg valid (put has valid gamma & OI)
+    mixed_call_zeroed = OptionStrike(
+        strike=23000,
+        call_oi=121615,
+        put_oi=50000,
+        call_iv=0.0,
+        put_iv=14.0,
+        call_greeks=Greeks(delta=0.0, gamma=0.0, theta=0.0, vega=0.0),
+        put_greeks=Greeks(delta=-0.5, gamma=0.01, theta=-2.0, vega=1.2),
+    )
+    assert mixed_call_zeroed.has_valid_call_greeks is False
+    assert mixed_call_zeroed.has_valid_put_greeks is True
+    assert mixed_call_zeroed.has_valid_greeks is False
+
+    # Mixed-leg: opposite leg invalid (put zeroed), call leg valid
+    mixed_put_zeroed = OptionStrike(
+        strike=23000,
+        call_oi=121615,
+        put_oi=50000,
+        call_iv=14.0,
+        put_iv=0.0,
+        call_greeks=Greeks(delta=0.5, gamma=0.01, theta=-2.0, vega=1.2),
+        put_greeks=Greeks(delta=0.0, gamma=0.0, theta=0.0, vega=0.0),
+    )
+    assert mixed_put_zeroed.has_valid_call_greeks is True
+    assert mixed_put_zeroed.has_valid_put_greeks is False
+    assert mixed_put_zeroed.has_valid_greeks is False
+
 
