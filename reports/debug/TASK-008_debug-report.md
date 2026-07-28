@@ -96,9 +96,9 @@ the session count: `vix_level_and_roc`'s `roc_history` is N−1 diffs, and
 `iv_rv_spread`'s rising/falling magnitude histories split those N−1 diffs across
 two lists (~N/2 each). Gating those at 20 would pin them to `0.5` permanently —
 trading stuck-at-1.00 for stuck-at-0.5, which is quieter but no more informative.
-10 is reachable inside the 60-session seed while still too large to saturate.
+10 is reachable inside the 60-session seed while reducing short-history saturation and avoiding degenerate single-element confidence.
 
-## Issues
+## Audit Issues (Post-Merge Fix)
 
 | # | Severity | Description | File:Line | Status |
 |---|---|---|---|---|

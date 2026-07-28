@@ -73,7 +73,7 @@ one pre-existing error in `ingestion/redis_client.py`, untouched here.
 
 ## Fixtures corrected
 
-Six existing tests were asserting real semantics (magnitude scaling, polarity,
+Seven existing tests were asserting real semantics (magnitude scaling, polarity,
 direction-agnosticism) against 1–5 element histories — the exact regime where
 the degenerate behaviour hides. They were passing *because* of the bug. Widened
 to windows that clear `MIN_PERCENTILE_HISTORY`, preserving each test's original
@@ -91,7 +91,7 @@ intent and expected values:
 Fixtures reference the `MIN_PERCENTILE_HISTORY` constant rather than a literal,
 so they track the guard if it is ever retuned.
 
-## Edge cases exercised
+## Edge Cases Exercised (Post-Merge Fix)
 
 - **Degenerate sample from both sides** — value above and below a 1-element
   history; both neutral.
@@ -102,7 +102,7 @@ so they track the guard if it is ever retuned.
   the guard at 10 rather than 20; the VIX polarity fixture exercises the
   tightest of these.
 
-## Gaps / follow-ups
+## Gaps / Follow-ups (Post-Merge Fix)
 
 - **The `DISTINCT ON` view itself is not covered by an automated test.** It is
   DDL executed directly against Supabase, and the existing live-DB tests are
