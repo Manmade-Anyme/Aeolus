@@ -180,3 +180,45 @@ def test_no_function_takes_a_clock_or_datetime_argument():
             assert "time" not in name.lower() and "clock" not in name.lower(), (
                 f"{fn.__name__} takes {name!r} — signals must never branch on wall-clock time"
             )
+
+
+def test_net_gamma_by_strike_excludes_zero_gamma_high_oi_strike_and_logs_warning(caplog):
+    # Strike 23000 has 121,615 call OI but zero call gamma (Dhan illiquid strike artifact)
+    zero_gamma_high_oi_strike = _strike(23000, 121615, 0.0, 0, 0.0)
+    valid_strike_1 = _strike(24400, 1000, 0.02, 500, 0.01)
+    valid_strike_2 = _strike(24500, 500, 0.01, 1000, 0.02)
+
+    chain = [zero_gamma_high_oi_strike, valid_strike_1, valid_strike_2]
+
+    with caplog.at_level("WARNING"):
+        pairs = _net_gamma_by_strike(chain)
+
+    # 23000 should be excluded from pairs (both call and put had zero gamma, call had OI)
+    assert [strike for strike, _ in pairs] == [24400, 24500]
+    assert len(pairs) == 2
+
+    # Warning log should be produced with excluded count
+    assert "Excluded 1 leg(s) with non-zero OI but zeroed gamma" in caplog.text
+
+
+def test_gex_regime_all_invalid_chain_returns_none():
+    # Entire chain consists of strikes with nonzero OI but zeroed gamma
+    all_invalid_chain = [
+        _strike(23000, 10000, 0.0, 0, 0.0),
+        _strike(24000, 0, 0.0, 20000, 0.0),
+    ]
+    raw_value, band, sub_score, reason = gex_regime(all_invalid_chain, 24000.0, LOT_SIZE, [], BAND)
+    assert raw_value is None
+    assert sub_score == 0.5
+
+
+def test_net_gamma_by_strike_preserves_valid_leg_on_mixed_strike():
+    # Strike 23000: call leg invalid (call_oi 10000, gamma 0.0), put leg valid (put_oi 5000, gamma 0.01)
+    mixed_strike = _strike(23000, 10000, 0.0, 5000, 0.01)
+    pairs = _net_gamma_by_strike([mixed_strike])
+    # Expected net gamma: 0.0 (call) - (0.01 * 5000) (put) = -50.0
+    assert len(pairs) == 1
+    assert pairs[0][0] == 23000.0
+    assert pairs[0][1] == pytest.approx(-50.0)
+
+

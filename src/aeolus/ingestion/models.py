@@ -34,6 +34,28 @@ class OptionStrike(BaseModel):
     call_greeks: Greeks
     put_greeks: Greeks
 
+    @property
+    def has_valid_call_greeks(self) -> bool:
+        """True if call leg does not have open interest with zeroed gamma."""
+        return not (self.call_oi > 0 and self.call_greeks.gamma == 0.0)
+
+    @property
+    def has_valid_put_greeks(self) -> bool:
+        """True if put leg does not have open interest with zeroed gamma."""
+        return not (self.put_oi > 0 and self.put_greeks.gamma == 0.0)
+
+    @property
+    def has_valid_greeks(self) -> bool:
+        """True if neither call nor put leg has open interest with zeroed gamma.
+
+        Dhan's option chain endpoint returns 0 for greeks and IV on illiquid
+        strikes with no recent trades, even when those strikes carry substantial
+        open interest. Including them with gamma=0 distorts net GEX calculations.
+        """
+        return self.has_valid_call_greeks and self.has_valid_put_greeks
+
+
+
 
 class DepthLevel(BaseModel):
     price: float
