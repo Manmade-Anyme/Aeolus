@@ -1,5 +1,5 @@
 -- AEOLUS — Complete Consolidated Supabase Database Schema
--- Includes all migrations (0001..0012) and the shared api_keys table.
+-- Includes all migrations (0001..0013) and the shared api_keys table.
 -- Can be executed all at once in the Supabase SQL Editor.
 
 -- ============================================================================
@@ -75,6 +75,9 @@ CREATE TABLE IF NOT EXISTS signal_snapshots (
 );
 
 CREATE INDEX IF NOT EXISTS idx_signal_snapshots_ts ON signal_snapshots (ts);
+-- Supports daily_eod_signal_snapshots' DISTINCT ON (see VIEWS below); column order matches its ORDER BY.
+CREATE INDEX IF NOT EXISTS idx_signal_snapshots_session_date_ts
+    ON signal_snapshots (session_date DESC, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_signal_snapshots_config_type ON signal_snapshots (config_type);
 
 -- state_transitions — log of confirmed, debounced state changes
@@ -190,3 +193,23 @@ CREATE TABLE IF NOT EXISTS ml_anomaly_scores (
 
 CREATE INDEX IF NOT EXISTS idx_ml_anomaly_scores_ts ON ml_anomaly_scores (ts);
 CREATE INDEX IF NOT EXISTS idx_ml_anomaly_scores_config_type ON ml_anomaly_scores (config_type);
+
+-- ============================================================================
+-- 4. VIEWS
+-- ============================================================================
+
+-- daily_eod_signal_snapshots — returns the chronologically final (EOD) snapshot for each distinct session_date.
+-- Cross-session trailing histories are seeded from this, never from signal_snapshots directly: the engine writes
+-- one row per 5s cycle, so a bounded .limit() over the raw table only ever covers a single session_date.
+-- security_invoker = on keeps the view from becoming an RLS bypass if a policy is later added to signal_snapshots.
+CREATE OR REPLACE VIEW daily_eod_signal_snapshots
+WITH (security_invoker = on) AS
+SELECT DISTINCT ON (session_date)
+    session_date,
+    ts,
+    raw_readings,
+    sub_scores,
+    composite_score,
+    market_state
+FROM signal_snapshots
+ORDER BY session_date DESC, ts DESC;

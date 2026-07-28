@@ -9,6 +9,7 @@ is a plain in-memory container the engine mutates each cycle.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -16,6 +17,8 @@ from supabase import Client
 
 from aeolus.ingestion.models import IngestionSnapshot
 from aeolus.storage.models import MarketState, SignalSnapshot
+
+logger = logging.getLogger("aeolus.engine.state")
 
 MAX_TRAILING_SESSIONS = 60
 
@@ -91,15 +94,51 @@ class EngineState:
         """
         state = cls()
 
-        prior_rows = (
-            client.table(SignalSnapshot.TABLE)
-            .select("session_date, ts, raw_readings, sub_scores, composite_score, market_state")
-            .lt("session_date", session_date.isoformat())
-            .order("ts", desc=True)
-            .limit(MAX_TRAILING_SESSIONS * 20)
-            .execute()
-            .data
-        )
+        columns = "session_date, ts, raw_readings, sub_scores, composite_score, market_state"
+        try:
+            prior_rows = (
+                client.table(SignalSnapshot.EOD_VIEW)
+                .select(columns)
+                .lt("session_date", session_date.isoformat())
+                .order("session_date", desc=True)
+                .limit(MAX_TRAILING_SESSIONS)
+                .execute()
+                .data
+            )
+        except Exception:
+            # Broad on purpose: this runs at Engine.start(), and no storage or
+            # transport fault here should stop the session from coming up.
+            #
+            # The fallback is genuinely degraded, not equivalent. Reading the
+            # raw table can only return rows from the most recent prior date
+            # (see SignalSnapshot.EOD_VIEW), so trailing histories come back
+            # with a single element. That is safe *only* because
+            # _percentile_rank's MIN_PERCENTILE_HISTORY guard turns a sample
+            # that short into a neutral 0.5 instead of a saturated 0.0/1.0 —
+            # signals go quiet rather than confidently wrong. Prior-day
+            # context (high/low/close/value area) is still recovered intact.
+            #
+            # Logged at ERROR because it means migration 0013 has not been
+            # applied to this database and needs to be.
+            logger.exception(
+                "Seeding trailing histories from %s failed; falling back to %s. "
+                "Trailing histories will be single-session (percentile signals "
+                "degrade to neutral 0.5) until migration 0013 is applied.",
+                SignalSnapshot.EOD_VIEW,
+                SignalSnapshot.TABLE,
+            )
+            prior_rows = (
+                client.table(SignalSnapshot.TABLE)
+                .select(columns)
+                .lt("session_date", session_date.isoformat())
+                # session_date leads the sort so _seed_cross_session's
+                # first-seen-wins dedupe still picks each date's true EOD row.
+                .order("session_date", desc=True)
+                .order("ts", desc=True)
+                .limit(MAX_TRAILING_SESSIONS * 20)
+                .execute()
+                .data
+            )
         state._seed_cross_session(prior_rows)  # type: ignore[arg-type]
 
         today_rows = (

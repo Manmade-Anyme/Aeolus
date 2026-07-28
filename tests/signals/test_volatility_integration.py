@@ -116,7 +116,10 @@ def test_vix_level_and_roc_empty_history_does_not_crash():
 
 
 def test_vix_level_and_roc_polarity_elevated_rising_scores_higher():
-    history = [12.0, 12.5, 13.0, 13.5, 14.0]
+    # 12 levels, so the derived roc_history (N-1 diffs) also clears
+    # MIN_PERCENTILE_HISTORY -- with a 5-element history both the level and
+    # the RoC rank fell back to neutral and the two scores tied at 0.5.
+    history = [12.0 + 0.5 * i for i in range(12)]
     _, _, elevated_rising_score, _ = vix_level_and_roc(20.0, history, BAND)
     _, _, quiet_falling_score, _ = vix_level_and_roc(10.0, history, BAND)
     assert elevated_rising_score > quiet_falling_score

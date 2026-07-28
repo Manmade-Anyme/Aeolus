@@ -18,7 +18,7 @@ _NON_EXPIRY_REFERENCE_BANDS: dict[str, tuple[float, float]] = {
     "vix_level_and_roc": (11.0, 20.0),
     "expected_move_consumed_ratio": (0.3, 1.0),
     "gex_regime": (0.0, 5_000_000_000.0),
-    "spot_distance_from_flip": (0.0, 2.0),
+    "spot_distance_from_flip": (0.0, 5.0),  # 0.0%-5.0% (~1,250 pts at NIFTY 25,000) desaturates 1.00 clipping for typical 250-500 pt distances
     "pcr_level_and_roc": (0.0, 0.3),
     "oi_buildup_classification": (0.3, 0.7),
     "oi_wall_proximity_and_strength": (0.0, 2.0),

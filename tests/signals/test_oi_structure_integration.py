@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import pytest
 
 from aeolus.ingestion.models import Greeks, IngestionSnapshot, OptionStrike
+from aeolus.signals.contract import MIN_PERCENTILE_HISTORY
 from aeolus.signals.oi_structure import (
     _classify_buildup,
     _max_pain,
@@ -78,7 +79,10 @@ def test_pcr_zero_call_oi_falls_back():
 def test_pcr_roc_realistic_computation():
     current = _snapshot(24500.0, 24550.0, [_strike(24500, 1000, 1200)])  # pcr = 1.2
     previous = _snapshot(24450.0, 24500.0, [_strike(24500, 1000, 900)])  # pcr = 0.9
-    raw_value, band, sub_score, reason = pcr_level_and_roc(current, previous, [0.1, 0.2], BAND)
+    # History repeated to clear _percentile_rank's MIN_PERCENTILE_HISTORY guard;
+    # every value still sits below abs(roc)=0.3, so the rank is unchanged at 1.0.
+    history = [0.1, 0.2] * 5
+    raw_value, band, sub_score, reason = pcr_level_and_roc(current, previous, history, BAND)
     assert raw_value == pytest.approx(0.3)
     assert band == BAND
     assert sub_score == 1.0  # abs(roc)=0.3 >= both history values
@@ -91,8 +95,9 @@ def test_pcr_direction_agnostic_rising_and_falling_score_equally():
     falling_current = _snapshot(24500.0, 24550.0, [_strike(24500, 1000, 900)])  # pcr 0.9
     falling_previous = _snapshot(24450.0, 24500.0, [_strike(24500, 1000, 1200)])  # pcr 1.2
 
-    _, _, rising_score, _ = pcr_level_and_roc(rising_current, rising_previous, [0.1], BAND)
-    _, _, falling_score, _ = pcr_level_and_roc(falling_current, falling_previous, [0.1], BAND)
+    history = [0.1] * MIN_PERCENTILE_HISTORY  # else both sides return a vacuous neutral 0.5
+    _, _, rising_score, _ = pcr_level_and_roc(rising_current, rising_previous, history, BAND)
+    _, _, falling_score, _ = pcr_level_and_roc(falling_current, falling_previous, history, BAND)
     assert rising_score == falling_score
 
 
@@ -203,8 +208,13 @@ def test_wall_proximity_polarity_far_and_decaying_scores_higher():
     near_spot = _snapshot(24501.0, 24550.0, chain)
     far_spot = _snapshot(25000.0, 24550.0, chain)
 
-    _, _, near_score, _ = oi_wall_proximity_and_strength(near_spot, None, [1.0, 2.0], [], BAND)
-    _, _, far_score, _ = oi_wall_proximity_and_strength(far_spot, None, [1.0, 2.0], [], BAND)
+    proximity_history = [1.0, 2.0] * 5  # clears MIN_PERCENTILE_HISTORY, same spread
+    _, _, near_score, _ = oi_wall_proximity_and_strength(
+        near_spot, None, proximity_history, [], BAND
+    )
+    _, _, far_score, _ = oi_wall_proximity_and_strength(
+        far_spot, None, proximity_history, [], BAND
+    )
     assert far_score > near_score
 
 
@@ -226,7 +236,8 @@ def test_max_pain_hand_computed_symmetric_chain():
 def test_max_pain_drift_realistic_computation():
     chain = [_strike(100, 10, 10), _strike(200, 10, 10), _strike(300, 10, 10)]
     current = _snapshot(200.0, 205.0, chain)
-    raw_value, band, sub_score, _ = max_pain_drift(current, 190.0, [5.0], BAND)
+    history = [5.0] * MIN_PERCENTILE_HISTORY  # clears the guard; abs(10) still >= every value
+    raw_value, band, sub_score, _ = max_pain_drift(current, 190.0, history, BAND)
     assert raw_value == 10.0  # 200 - 190
     assert band == BAND
     assert sub_score == 1.0  # abs(10) >= history value 5.0

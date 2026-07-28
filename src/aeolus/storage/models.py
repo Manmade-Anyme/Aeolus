@@ -36,6 +36,13 @@ class SignalSnapshot(BaseModel):
 
     TABLE: ClassVar[str] = "signal_snapshots"
 
+    # Read-only view (migration 0013) returning the chronologically final row
+    # per session_date. Cross-session trailing histories MUST be seeded from
+    # this, not from TABLE: the engine writes one row per 5s cycle (~4,500
+    # rows/session), so any bounded `.limit()` over TABLE returns rows from a
+    # single date and collapses every trailing history to one element.
+    EOD_VIEW: ClassVar[str] = "daily_eod_signal_snapshots"
+
     id: UUID = Field(default_factory=uuid4)
     ts: datetime
     session_date: date

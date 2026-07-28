@@ -3,6 +3,7 @@ import inspect
 import pytest
 
 from aeolus.ingestion.models import Greeks, OptionStrike
+from aeolus.signals.contract import MIN_PERCENTILE_HISTORY
 from aeolus.signals.gamma import (
     _flip_level,
     _net_gamma_by_strike,
@@ -48,6 +49,26 @@ def test_gex_regime_thin_oi_falls_back():
     assert result[:3] == (None, BAND, 0.5)
 
 
+def test_gex_regime_single_session_history_does_not_saturate():
+    """Regression: gex_regime sat locked at sub_score 1.00 in live sessions.
+
+    Cause was upstream (trailing histories seeded from a single session_date,
+    fixed by the daily_eod_signal_snapshots view), but the reason it surfaced
+    as a *confident* 1.00 rather than as neutral is that _percentile_rank over
+    a 1-element history can only return 0.0 or 1.0. Assert the guard holds the
+    line here, so a future seeding regression degrades quietly instead of
+    fabricating a maximally GO-favorable reading.
+    """
+    put_dominant = [_strike(24500, 100, 0.005, 1000, 0.02)]
+    _, _, sub_score, _ = gex_regime(put_dominant, 24500.0, LOT_SIZE, [1.0], BAND)
+    assert sub_score == 0.75  # 0.5 + 0.5 * neutral 0.5, not 0.5 + 0.5 * 1.0
+
+    # Same reading with a real window behind it is still free to reach 1.00.
+    full_history = [1.0] * MIN_PERCENTILE_HISTORY
+    _, _, saturated, _ = gex_regime(put_dominant, 24500.0, LOT_SIZE, full_history, BAND)
+    assert saturated == 1.0
+
+
 def test_gex_regime_sign_convention_call_dominant_vs_put_dominant():
     call_dominant = [_strike(24500, 1000, 0.02, 100, 0.005)]
     put_dominant = [_strike(24500, 100, 0.005, 1000, 0.02)]
@@ -65,8 +86,10 @@ def test_gex_regime_magnitude_scales_sub_score():
     chain = [_strike(24500, 100, 0.005, 1000, 0.02)]
 
     raw_value, _, _, _ = gex_regime(chain, 24500.0, LOT_SIZE, [], BAND)
-    weak_history = [abs(raw_value) * 10]  # our reading sits at a low percentile
-    strong_history = [abs(raw_value) / 10]  # our reading sits at a high percentile
+    # Histories must clear _percentile_rank's MIN_PERCENTILE_HISTORY guard, or
+    # both readings come back as a neutral 0.5 and the comparison is vacuous.
+    weak_history = [abs(raw_value) * 10] * MIN_PERCENTILE_HISTORY  # low percentile
+    strong_history = [abs(raw_value) / 10] * MIN_PERCENTILE_HISTORY  # high percentile
 
     _, _, weak_score, _ = gex_regime(chain, 24500.0, LOT_SIZE, weak_history, BAND)
     _, _, strong_score, _ = gex_regime(chain, 24500.0, LOT_SIZE, strong_history, BAND)
