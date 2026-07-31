@@ -13,6 +13,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
+      # Built on the runner's own Docker daemon and pushed to Fly's registry,
+      # rather than --remote-only. Fly's Depot builder was unreachable for
+      # three consecutive deploys (runs #5-#7, 2026-07-27/28): two 5-minute
+      # "Waiting for depot builder..." stalls, then "error building: context
+      # deadline exceeded" -- the build never started. --local-only takes that
+      # builder off the critical path; the image is small (python:3.11-slim +
+      # pip install) so runner-side build time is acceptable.
+      - run: flyctl deploy --local-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
