@@ -13,13 +13,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      # Built on the runner's own Docker daemon and pushed to Fly's registry,
-      # rather than --remote-only. Fly's Depot builder was unreachable for
-      # three consecutive deploys (runs #5-#7, 2026-07-27/28): two 5-minute
-      # "Waiting for depot builder..." stalls, then "error building: context
-      # deadline exceeded" -- the build never started. --local-only takes that
-      # builder off the critical path; the image is small (python:3.11-slim +
-      # pip install) so runner-side build time is acceptable.
-      - run: flyctl deploy --local-only
+
+      # Remote (Depot) build stays the primary path -- it is faster and keeps
+      # the build off the runner. It is capped rather than trusted: Fly's Depot
+      # builder was unreachable for four consecutive deploys (runs #5-#7 plus a
+      # re-run, 2026-07-27..31), each burning two 5-minute "Waiting for depot
+      # builder..." stalls before "error building: context deadline exceeded".
+      # The last healthy remote deploy (run #4) finished in 78s, so 5 minutes is
+      # ample headroom for a working builder and cuts a stalled one short.
+      - id: remote_build
+        continue-on-error: true
+        timeout-minutes: 5
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      # Fallback only: builds on the runner's own Docker daemon and pushes to
+      # Fly's registry, so an unavailable Depot builder cannot block a deploy.
+      # Slower (no shared build cache), which is why it is second, not first.
+      - if: steps.remote_build.outcome != 'success'
+        run: flyctl deploy --local-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
